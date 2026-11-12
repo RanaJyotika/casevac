@@ -1,0 +1,58 @@
+@import "tailwindcss";
+
+/*
+ * CASEVAC admin theme — mirrors CASEVAC_DOCS/UI_DESIGN_GUIDELINES.md and the
+ * mobile app tokens. Formal, light, restrained. Never rely on colour alone.
+ */
+@theme {
+  --color-canvas: #f7f8fa;
+  --color-surface: #ffffff;
+  --color-ink: #1c2630;
+  --color-ink-2: #3a444f;
+  --color-muted: #5d6772;
+  --color-line: #d3d9df;
+  --color-line-soft: #e6eaee;
+
+  --color-brand: #244b66;
+  --color-brand-hover: #1a3a50;
+  --color-brand-soft: #eaf0f5;
+
+  --color-ok: #1f6641;
+  --color-ok-bg: #eef6f1;
+  --color-ok-line: #b9d5c4;
+  --color-warn: #7a4f12;
+  --color-warn-bg: #fbf6ec;
+  --color-warn-line: #e2cfa6;
+  --color-danger: #aa3030;
+  --color-danger-bg: #fbefef;
+  --color-danger-line: #e5bdbd;
+
+  --font-sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", Consolas, "Liberation Mono", monospace;
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}
+
+dialog::backdrop {
+  background: rgb(28 38 48 / 0.45);
+}
+
+@media print {
+  body {
+    background: #ffffff;
+  }
+}
