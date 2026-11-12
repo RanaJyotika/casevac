@@ -2,6 +2,8 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { generateKeyPairSync } from "node:crypto";
+import { issuerKeyFromPkcs8, setIssuerKeyForTesting } from "@/lib/crypto/qr-issuer";
 import { setRepositoryForTesting } from "@/lib/data";
 import { JsonFileRepository } from "@/lib/data/json-file-repository";
 import { parseQrPayload } from "@/lib/domain/qr-format";
@@ -54,10 +56,15 @@ beforeEach(() => {
   dir = mkdtempSync(path.join(tmpdir(), "casevac-test-"));
   file = path.join(dir, "db.json");
   setRepositoryForTesting(new JsonFileRepository(file));
+  const der = generateKeyPairSync("ed25519").privateKey.export({ format: "der", type: "pkcs8" }).toString("base64url");
+  const key = issuerKeyFromPkcs8("test-issuer", der);
+  if (!key.ok) throw new Error(key.message);
+  setIssuerKeyForTesting(key.key);
 });
 
 afterEach(() => {
   setRepositoryForTesting(null);
+  setIssuerKeyForTesting(undefined);
   rmSync(dir, { recursive: true, force: true });
 });
 
@@ -71,13 +78,31 @@ describe("soldier registration", () => {
     expect(credential.version).toBe(1);
 
     const parsed = parseQrPayload(credential.payload);
-    expect(parsed.ok).toBe(true);
-    // The QR must not leak identity data.
-    // (Single letters like blood group "B" are not checked: random tokens may contain them by chance.)
-    for (const secret of ["Rahul", "Sharma", "DEMO-12345", person.id, "PAT-00001"]) {
-      expect(credential.payload.split(":")[2]).not.toContain(secret);
+    expect(parsed.ok && parsed.claims).toMatchObject({
+      keyId: "test-issuer",
+      credentialId: credential.id,
+      patientId: person.id,
+      credentialVersion: 1,
+    });
+    expect(credential.formatVersion).toBe(2);
+    expect(credential.keyId).toBe("test-issuer");
+    // Signed issue time and stored issue time agree to the second.
+    expect(parsed.ok && parsed.claims.issuedAt * 1000).toBe(Date.parse(credential.issuedAt));
+    // The QR must not leak identity data: only opaque IDs, version, time and signature.
+    // (The signature is not checked for short strings: random base64url may contain them by chance.)
+    const signedPart = parsed.ok ? parsed.signedMessage : "";
+    for (const secret of ["Rahul", "Sharma", "DEMO-12345", "PAT-00001", "2 Demo Rifles"]) {
+      expect(signedPart).not.toContain(secret);
     }
-    expect(credential.payload).toMatch(/^CASEVAC:1:[A-Za-z0-9_-]{22}$/);
+    expect((await resolveQrPayload(credential.payload)).ok).toBe(true);
+  });
+
+  it("refuses to issue an unsigned QR when no signing key is configured, rolling back registration", async () => {
+    setIssuerKeyForTesting(null);
+    const r = await registerSoldier(soldierInput(), actor);
+    expect(r.ok).toBe(false);
+    expect(!r.ok && r.message).toMatch(/signing key is not configured/);
+    expect(await listPersonnel()).toHaveLength(0);
   });
 
   it("validates required fields and formats", async () => {
@@ -178,6 +203,16 @@ describe("QR lifecycle", () => {
     for (const raw of ["", "hello", "CASEVAC:2:abcdefghijklmnopqrstuv", "CASEVAC:1:short", "OTHER:1:abcdefghijklmnopqrstuv"]) {
       expect((await resolveQrPayload(raw)).ok).toBe(false);
     }
+    expect(await resolveQrPayload("CASEVAC:1:abcdefghijklmnopqrstuv")).toEqual({ ok: false, reason: "LEGACY_UNSIGNED" });
+  });
+
+  it("rejects QR codes signed by a key the dashboard does not hold", async () => {
+    const { credential } = unwrap(await registerSoldier(soldierInput(), actor));
+    const der = generateKeyPairSync("ed25519").privateKey.export({ format: "der", type: "pkcs8" }).toString("base64url");
+    const rotated = issuerKeyFromPkcs8("test-issuer", der);
+    if (!rotated.ok) throw new Error(rotated.message);
+    setIssuerKeyForTesting(rotated.key);
+    expect(await resolveQrPayload(credential.payload)).toEqual({ ok: false, reason: "BAD_SIGNATURE" });
   });
 
   it("renders SVG and PNG", async () => {
@@ -245,9 +280,14 @@ describe("dashboard data", () => {
     const soldier = (await listPersonnel({ category: "SOLDIER" }))[0].person;
     unwrap(await revokeCredential(soldier.id, "Lost in transit", actor));
     const directory = await buildIdentityDirectory();
-    expect(directory.entries).toHaveLength(2);
-    expect(directory.entries.every(e => e.token.length === 22)).toBe(true);
+    expect(directory.formatVersion).toBe(2);
+    expect(directory.patients).toHaveLength(2);
+    expect(directory.patients.map(p => p.patientId)).not.toContain(soldier.id);
+    // The revoked credential stays listed so phones can reject it offline.
+    expect(directory.credentials).toHaveLength(3);
+    expect(directory.credentials.find(c => c.patientId === soldier.id)?.status).toBe("REVOKED");
     expect(JSON.stringify(directory)).not.toContain("nextOfKin");
+    expect(JSON.stringify(directory)).not.toContain("serviceNumber");
 
     unwrap(await resetDemoData(actor));
     expect((await getDashboardSummary()).isEmpty).toBe(true);

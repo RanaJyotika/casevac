@@ -10,13 +10,14 @@ import type { Clinician } from '../types';
 const SIMULATED_DELAY_MS = 400;
 
 export async function demoSignIn(
-  clinicianId: string,
-  pin: string,
+  userId: string,
+  password: string,
 ): Promise<Clinician | null> {
   await new Promise<void>(resolve => setTimeout(resolve, SIMULATED_DELAY_MS));
-  const normalisedId = clinicianId.trim().toUpperCase();
+  const normalisedId = userId.trim().toUpperCase();
   const match = DEMO_ACCOUNTS.find(
-    account => account.clinician.id === normalisedId && account.pin === pin,
+    account =>
+      account.clinician.id === normalisedId && account.password === password,
   );
   return match ? match.clinician : null;
 }

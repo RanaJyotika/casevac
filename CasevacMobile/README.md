@@ -1,3 +1,37 @@
+# Jeevan — CASEVAC medic app (demo build)
+
+React Native app for casualty documentation on **Android tablets, landscape only** (baseline 1280 × 800 dp;
+design rules in [`CASEVAC_DOCS/UI_DESIGN_GUIDELINES.md`](CASEVAC_DOCS/UI_DESIGN_GUIDELINES.md)).
+Fictional data only; sign-in is mocked (user ID `MED-DEMO-01`, password `1234`). Product docs: [`CASEVAC_DOCS/`](CASEVAC_DOCS/).
+
+## Wristband QR verification (offline)
+
+**Scan Patient QR** opens the camera (`react-native-camera-kit`) and verifies the wristband entirely on the phone:
+Ed25519 signature against a trusted issuer key (`@noble/curves`), then revocation and identity lookup in the
+locally provisioned directory. Only a verified credential opens **Patient Identification**. Contract:
+[`../admin-dashboard/INTEGRATION.md`](../admin-dashboard/INTEGRATION.md).
+
+| Path | Role |
+| --- | --- |
+| `src/services/qr/` | Payload parsing, signature verification, `identifyPatient`, error messages |
+| `src/services/identity/` | `TrustStore` / `IdentityDirectory` interfaces + bundled demo implementation |
+| `src/provisioning/*.json` | Demo trusted key + identity directory, written by the dashboard |
+| `src/screens/ScanPatientScreen.tsx`, `PatientIdentificationScreen.tsx` | M03 / M04 |
+
+To provision a phone with dashboard-issued wristbands:
+
+```powershell
+cd ..\admin-dashboard
+npm run mobile:provision   # after registering or reissuing soldiers; rerun after any QR change
+```
+
+Then reload the app (press `r` in Metro). New native dependencies need a fresh build (`npm run android`).
+
+Tests: `npx jest` (verification against the shared dashboard test vector, tampering, forgery, revocation,
+scan flow). `npx tsc --noEmit`, `npx eslint .`.
+
+---
+
 This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
 
 # Getting Started

@@ -1,0 +1,14 @@
+{
+  "format": "casevac.trusted-issuer-keys",
+  "formatVersion": 1,
+  "generatedAt": "2026-11-12T08:42:25.619Z",
+  "notice": "DEVELOPMENT ISSUER KEY — public key only. Production trust anchors require an approved provisioning process.",
+  "keys": [
+    {
+      "keyId": "dev-issuer-01",
+      "issuer": "CASEVAC_ADMIN",
+      "algorithm": "Ed25519",
+      "publicKey": "yACeRywOMQo5c9uhH8DEqdaBKAwjOEcHc0lEKDvwmos"
+    }
+  ]
+}

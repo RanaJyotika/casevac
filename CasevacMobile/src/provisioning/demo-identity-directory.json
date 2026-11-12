@@ -1,0 +1,9 @@
+{
+  "format": "casevac.identity-directory",
+  "formatVersion": 2,
+  "generatedAt": "2026-11-12T08:42:25.627Z",
+  "dataSource": "DEMO",
+  "notice": "DEMONSTRATION EXPORT — fictional records only. Unencrypted. Not for operational use.",
+  "patients": [],
+  "credentials": []
+}

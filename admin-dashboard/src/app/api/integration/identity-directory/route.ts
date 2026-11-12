@@ -13,7 +13,7 @@ export async function GET() {
 
   const directory = await buildIdentityDirectory();
   await runTransaction({ id: session.sub, name: session.name }, async (_tx, audit) => {
-    await audit("DIRECTORY_EXPORTED", "SYSTEM", null, `Exported demo identity directory (${directory.entries.length} entries)`);
+    await audit("DIRECTORY_EXPORTED", "SYSTEM", null, `Exported demo identity directory (${directory.patients.length} patients, ${directory.credentials.length} credentials)`);
     return ok(null);
   });
 

@@ -5,7 +5,8 @@
 import QRCode from "qrcode";
 import { getRepository, type RepositoryWriter } from "../data";
 import { newInternalId, newOpaqueToken } from "../domain/ids";
-import { buildQrPayload, parseQrPayload, QR_FORMAT_VERSION } from "../domain/qr-format";
+import { getIssuerKey, signPatientCredential, verifyPatientCredential } from "../crypto/qr-issuer";
+import { QR_FORMAT_VERSION } from "../domain/qr-format";
 import type {
   Actor,
   CredentialStatus,
@@ -16,29 +17,47 @@ import type {
 import { validateReason } from "../domain/validation";
 import { fail, invalid, nowIso, ok, runTransaction, type AuditFn, type ServiceResult } from "./common";
 
-/** Issues a new ACTIVE QR credential inside an existing transaction. */
+/**
+ * Issues a new ACTIVE, Ed25519-signed QR credential inside an existing
+ * transaction. Fails (rolling the transaction back) when no issuer signing key
+ * is configured — an unsigned wristband is never produced.
+ */
 export async function issueCredentialTx(
   tx: RepositoryWriter,
   audit: AuditFn,
   person: SoldierRecord,
   actor: Actor,
-): Promise<IdentityCredential> {
+): Promise<ServiceResult<IdentityCredential>> {
+  const issuer = getIssuerKey();
+  if (!issuer.ok) return fail(issuer.message);
+
   const existing = (await tx.listCredentials()).filter(c => c.personId === person.id);
   const version = existing.reduce((max, c) => Math.max(max, c.version), 0) + 1;
 
   let token = newOpaqueToken();
   while (await tx.findCredentialByToken(token)) token = newOpaqueToken();
 
+  const id = newInternalId();
+  // Whole seconds: the signed issue time and the stored one must agree exactly.
+  const issuedAtSeconds = Math.floor(Date.now() / 1000);
+  const payload = signPatientCredential(issuer.key, {
+    credentialId: id,
+    patientId: person.id,
+    credentialVersion: version,
+    issuedAt: issuedAtSeconds,
+  });
+
   const credential: IdentityCredential = {
-    id: newInternalId(),
+    id,
     personId: person.id,
     method: "QR",
     formatVersion: QR_FORMAT_VERSION,
+    keyId: issuer.key.keyId,
     token,
-    payload: buildQrPayload(token),
+    payload,
     version,
     status: "ACTIVE",
-    issuedAt: nowIso(),
+    issuedAt: new Date(issuedAtSeconds * 1000).toISOString(),
     issuedBy: actor.id,
     wristbandIssuedAt: null,
     wristbandIssuedBy: null,
@@ -50,8 +69,8 @@ export async function issueCredentialTx(
     lastPrintedAt: null,
   };
   await tx.insertCredential(credential);
-  await audit("QR_ISSUED", "CREDENTIAL", credential.id, `Issued QR v${version} for ${person.displayId}`);
-  return credential;
+  await audit("QR_ISSUED", "CREDENTIAL", credential.id, `Issued signed QR v${version} for ${person.displayId}`);
+  return ok(credential);
 }
 
 async function loadSoldier(tx: RepositoryWriter, personId: string): Promise<SoldierRecord | null> {
@@ -72,7 +91,7 @@ export async function issueNewCredential(personId: string, actor: Actor): Promis
     if (await activeCredentialFor(tx, personId)) {
       return fail("This soldier already has an active QR. Use Reissue to replace it.");
     }
-    return ok(await issueCredentialTx(tx, audit, person, actor));
+    return issueCredentialTx(tx, audit, person, actor);
   });
 }
 
@@ -96,7 +115,9 @@ export async function reissueCredential(personId: string, reason: string, actor:
       revocationReason: r.value,
     };
     await tx.updateCredential(retired);
-    const next = await issueCredentialTx(tx, audit, person, actor);
+    const issued = await issueCredentialTx(tx, audit, person, actor);
+    if (!issued.ok) return issued;
+    const next = issued.value;
     await tx.updateCredential({ ...retired, replacedByCredentialId: next.id });
     await audit(
       "QR_REISSUED",
@@ -226,18 +247,39 @@ export async function getCredentialWithPerson(credentialId: string): Promise<Cre
 }
 
 /**
- * Resolve a scanned payload exactly as the mobile app will (against the
- * dashboard's data). Only ACTIVE credentials of ACTIVE soldiers resolve.
+ * Resolve a scanned payload the way the mobile app does, but against the
+ * dashboard's own records: verify the Ed25519 signature with the configured
+ * issuer key, then require an ACTIVE credential of an ACTIVE soldier whose IDs
+ * match the signed claims.
  */
 export async function resolveQrPayload(raw: string): Promise<
   | { ok: true; person: SoldierRecord; credential: IdentityCredential }
-  | { ok: false; reason: "INVALID_PAYLOAD" | "UNKNOWN_TOKEN" | "CREDENTIAL_NOT_ACTIVE" | "PERSON_INACTIVE" }
+  | {
+      ok: false;
+      reason:
+        | "INVALID_PAYLOAD"
+        | "LEGACY_UNSIGNED"
+        | "SIGNING_KEY_UNAVAILABLE"
+        | "UNKNOWN_KEY"
+        | "BAD_SIGNATURE"
+        | "UNKNOWN_CREDENTIAL"
+        | "CREDENTIAL_NOT_ACTIVE"
+        | "PERSON_INACTIVE";
+    }
 > {
-  const parsed = parseQrPayload(raw);
-  if (!parsed.ok) return { ok: false, reason: "INVALID_PAYLOAD" };
+  const issuer = getIssuerKey();
+  if (!issuer.ok) return { ok: false, reason: "SIGNING_KEY_UNAVAILABLE" };
+  const verified = verifyPatientCredential(raw, issuer.key);
+  if (!verified.ok) {
+    if (verified.reason === "UNKNOWN_KEY" || verified.reason === "BAD_SIGNATURE" || verified.reason === "LEGACY_UNSIGNED") {
+      return { ok: false, reason: verified.reason };
+    }
+    return { ok: false, reason: "INVALID_PAYLOAD" };
+  }
+  const { credentialId, patientId } = verified.claims;
   const repo = getRepository();
-  const credential = await repo.findCredentialByToken(parsed.token);
-  if (!credential) return { ok: false, reason: "UNKNOWN_TOKEN" };
+  const credential = await repo.getCredential(credentialId);
+  if (!credential || credential.personId !== patientId) return { ok: false, reason: "UNKNOWN_CREDENTIAL" };
   if (credential.status !== "ACTIVE") return { ok: false, reason: "CREDENTIAL_NOT_ACTIVE" };
   const person = await repo.getPerson(credential.personId);
   if (!person || person.category !== "SOLDIER" || person.status !== "ACTIVE") {

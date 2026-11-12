@@ -1,6 +1,6 @@
 # CASEVAC — Application Flow
 
-**Scope:** QR-first medic Android app, basic registration dashboard, Point A → Point B.  
+**Scope:** QR-first medic Android **tablet** app (Jeevan, landscape-only), basic registration dashboard, Point A → Point B.  
 **Key rule:** the patient QR is *identity only*. Cross-phone treatment history requires a separate validated transfer or previously synced cache.
 
 ## 1. Cross-system overview
@@ -49,7 +49,34 @@ Admin Sign In
 
 The QR token must not contain name, service number, address, medical history or live incident details by default. Handle reissue by rotating/revoking old token. A QR generation UI alone does not automatically provision offline phones with the mapping; controlled patient directory caching must be designed.
 
-## 3. Medic mobile navigation map
+## 3. Medic app navigation map
+
+**Tablet navigation (12 Nov 2026):** after login, every screen uses the app shell — top bar plus a persistent left
+navigation (Home, Scan QR, Casualties, Evacuations, Handover, Track Casualty). Clinical workflow steps open in the
+content area; Back returns one step. Home is a command dashboard with quick actions.
+
+### 3a. Client 10-screen clinical flow
+
+```mermaid
+flowchart LR
+    L[1 Login] --> H[Home dashboard]
+    H --> S[2 Scan Patient QR]
+    S --> P[3 Patient Details]
+    S -->|No wristband| T[Temporary registration]
+    P --> C{4 Conscious and able to give details?}
+    C -->|Yes| A[5 Initial Casualty Assessment]
+    C -->|No| T
+    T --> A
+    A --> I[6 Initial Interventions]
+    I --> K[7 Casualty Condition / Triage]
+    K --> HD[8 Handover Details]
+    HD --> PE[9 Prepare Evacuation]
+    PE --> D[10 Evacuation Completed]
+```
+
+Order of steps 8 and 9 awaits client confirmation. Screen IDs: `SCREEN_SPECIFICATIONS.md`.
+
+### 3b. Detailed screen map
 
 ```mermaid
 flowchart TD

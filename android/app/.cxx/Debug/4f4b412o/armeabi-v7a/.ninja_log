@@ -1,0 +1,14 @@
+# ninja log v5
+1	17	0	D:/VedicVaibhav/Casevac/casevac/android/app/.cxx/Debug/4f4b412o/armeabi-v7a/CMakeFiles/cmake.verify_globs	c68716e9ac952238
+30	1659	8161636251476648	safeareacontext_autolinked_build/CMakeFiles/react_codegen_safeareacontext.dir/340844efa75273999c9aa9090cfbdad6/jni/react/renderer/components/safeareacontext/States.cpp.o	7720fa1ecae946d6
+26	2142	8161636256286659	safeareacontext_autolinked_build/CMakeFiles/react_codegen_safeareacontext.dir/c9212b0d453b23fe05fa5c98510dd439/react/renderer/components/safeareacontext/EventEmitters.cpp.o	f2049940c15406c6
+38	2498	8161636259841789	safeareacontext_autolinked_build/CMakeFiles/react_codegen_safeareacontext.dir/9d688ab84f8492171938041c60787bdd/generated/source/codegen/jni/safeareacontext-generated.cpp.o	e65a78710400687e
+5	2870	8161636263536844	CMakeFiles/appmodules.dir/OnLoad.cpp.o	2278420eb6ecdc7
+8	3147	8161636266284719	safeareacontext_autolinked_build/CMakeFiles/react_codegen_safeareacontext.dir/14cc0fb156cf23c2e9e9d06e9f4f7932/components/safeareacontext/RNCSafeAreaViewState.cpp.o	56650a7f04af9389
+34	3288	8161636267764710	safeareacontext_autolinked_build/CMakeFiles/react_codegen_safeareacontext.dir/c9212b0d453b23fe05fa5c98510dd439/react/renderer/components/safeareacontext/ShadowNodes.cpp.o	e82a37a5613f6cb0
+15	3445	8161636269239791	safeareacontext_autolinked_build/CMakeFiles/react_codegen_safeareacontext.dir/340844efa75273999c9aa9090cfbdad6/jni/react/renderer/components/safeareacontext/Props.cpp.o	10485519841fe1be
+20	3889	8161636273710202	safeareacontext_autolinked_build/CMakeFiles/react_codegen_safeareacontext.dir/247040bb2f9992d4f67d4e6807e99bff/components/safeareacontext/ComponentDescriptors.cpp.o	c42f5484e08ceb2f
+12	4276	8161636277606809	safeareacontext_autolinked_build/CMakeFiles/react_codegen_safeareacontext.dir/14cc0fb156cf23c2e9e9d06e9f4f7932/components/safeareacontext/RNCSafeAreaViewShadowNode.cpp.o	fa5bf3d0d7fda46d
+4276	4391	8161636278803574	D:/VedicVaibhav/Casevac/casevac/android/app/build/intermediates/cxx/Debug/4f4b412o/obj/armeabi-v7a/libreact_codegen_safeareacontext.so	2d34ef8aa4f42afa
+1	4425	8161636279043600	CMakeFiles/appmodules.dir/D_/VedicVaibhav/Casevac/casevac/android/app/build/generated/autolinking/src/main/jni/autolinking.cpp.o	615dfc30b894cc8e
+4425	4502	8161636279923590	D:/VedicVaibhav/Casevac/casevac/android/app/build/intermediates/cxx/Debug/4f4b412o/obj/armeabi-v7a/libappmodules.so	f34511f7f403e810

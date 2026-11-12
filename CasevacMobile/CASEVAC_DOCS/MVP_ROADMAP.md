@@ -3,6 +3,21 @@
 **Goal:** Deliver a visible **2–3-day basic demonstration** of QR-based personnel registration, Android clinical record entry and a handover summary.  
 **Important:** This is a sprint target for *basic UI and local prototype behaviour*, **not** a guaranteed secure multi-device / production medical deployment. The earlier client pack treats controlled offline-transfer validation and clinical/security sign-off as later work.
 
+## Client UI update — tablet landscape (12 Nov 2026)
+
+The client now requires a **tablet-first, landscape-only** app named **Jeevan** with a command-dashboard home
+(`UI_DESIGN_GUIDELINES.md` v2, `REQUIREMENTS.md` FR-22–FR-32). App logic is unchanged; layouts change.
+
+| Order | Task | Status |
+| --- | --- | --- |
+| 1 | Freeze the tablet layout system (sidebar 240 dp, top bar 64 dp, type scale, card style, chart placement) | Proposed values in UI guide §4 — **awaiting client approval** |
+| 2 | Redraw the client's 10 screens as landscape wireframes | To do |
+| 3 | Landscape lock + design tokens + tablet-sized inputs/buttons | Done (Android 16 caveat documented) |
+| 4 | Login screen — split layout | Done |
+| 5 | App shell (TopBar, SideNav) + Home dashboard (cards, charts, activity, quick actions, manual ID entry) | Done with fictional demo data; real figures need evacuation storage with triage + company |
+| 6 | Restyle Scan QR and Patient Details into split layouts | After Home |
+| 7 | Clinical screens 4–10 in two-column / card layouts | With Phase 3 clinical records |
+
 ## 0. Work that is already underway
 
 - React Native CLI project `CasevacMobile` has been generated on a Windows development machine.

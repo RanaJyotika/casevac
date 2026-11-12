@@ -35,3 +35,17 @@ export interface EvacuationSummary {
   eventCount: number;
   status: RecordStatus;
 }
+
+/** Triage category (UI_DESIGN_GUIDELINES.md §7). Definitions need clinical approval. */
+export type TriageCategory = 'RED' | 'YELLOW' | 'GREEN' | 'BLACK';
+
+/**
+ * Operational evacuation stage shown on the Home dashboard. PROVISIONAL —
+ * definitions await client approval (REQUIREMENTS.md §H). Distinct from the
+ * digital transfer RecordStatus above.
+ */
+export type EvacuationStage =
+  | 'AWAITING_PICKUP'
+  | 'IN_TRANSFER'
+  | 'HANDED_OVER'
+  | 'COMPLETED';

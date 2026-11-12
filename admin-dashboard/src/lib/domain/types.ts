@@ -88,9 +88,18 @@ export interface IdentityCredential {
   id: string;
   personId: string;
   method: IdentityMethod;
-  /** Version of the payload format (see lib/domain/qr-format.ts). */
-  formatVersion: 1;
-  /** 128-bit random, base64url. Opaque; maps to exactly one Person. */
+  /**
+   * Payload format (see lib/domain/qr-format.ts).
+   * 1 = legacy unsigned token (rejected by the medic app — reissue);
+   * 2 = Ed25519-signed patient credential.
+   */
+  formatVersion: 1 | 2;
+  /** Issuer signing key that signed a v2 payload. Absent on legacy v1 records. */
+  keyId?: string;
+  /**
+   * 128-bit random, base64url. Internal opaque reference; it is the QR content
+   * only for legacy v1 credentials. v2 QR codes identify the credential by `id`.
+   */
   token: string;
   /** Exact string encoded into the QR. */
   payload: string;

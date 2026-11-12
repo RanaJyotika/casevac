@@ -14,6 +14,7 @@ cd "E:\vedic vaibhav\casevac\admin-dashboard"
 npm install
 # .env.local already exists on the development machine; elsewhere:
 copy .env.example .env.local   # then set CASEVAC_SESSION_SECRET and DEMO_ADMIN_PASSWORD
+npm run issuer:keygen           # once: development QR signing key → .env.local
 npm run dev                     # http://localhost:3000
 ```
 
@@ -26,7 +27,9 @@ Settings → **Load fictional sample records** fills an empty store with demo da
 | `npm run build` / `npm start` | Production build / serve |
 | `npm run typecheck` | TypeScript (strict) |
 | `npm run lint` | ESLint |
-| `npm test` | Service-layer tests (Vitest, temp data files) |
+| `npm test` | Service-layer and QR signing tests (Vitest, temp data files) |
+| `npm run issuer:keygen` | Generate a development Ed25519 QR issuer key into `.env.local` (`-- --force` to rotate) |
+| `npm run mobile:provision` | Write the trusted public key + demo identity directory into `../CasevacMobile/src/provisioning` |
 
 ## Pages
 
@@ -66,7 +69,10 @@ tests/                 Vitest service tests
 * **Identity model.** `Person.id` is a random UUID; `displayId` (PAT-/MED-/DOC-/STF-00001) is for humans.
   QR credentials are separate records with their own 128-bit random token, version and status, so wristbands can
   be reprinted, replaced or revoked without changing the person. Only one ACTIVE credential per soldier.
-* **QR payload:** `CASEVAC:1:<token>` — no name, service number, contact or medical data. See `INTEGRATION.md`.
+* **QR payload v2:** `CASEVAC:2:P:<keyId>:<credentialId>:<patientId>:<version>:<issuedAt>:<Ed25519 signature>`
+  — no name, service number, contact or medical data. Signed server-side with the issuer key from `.env.local`;
+  issuance fails rather than producing an unsigned QR. Legacy `CASEVAC:1:<token>` codes must be reissued.
+  See `INTEGRATION.md`.
 * **Persistence:** `CASEVAC_DATA_SOURCE=demo-file` → `.data/casevac-demo-db.json` (server-side, git-ignored,
   atomic writes, in-process lock). A PostgreSQL/API implementation plugs in behind `lib/data/repository.ts`.
 * **Audit:** every change appends an `AuditEvent` (IDs only); `setAuditSink()` is the hook for a central service.
@@ -76,7 +82,9 @@ tests/                 Vitest service tests
 
 * Demo authentication: one configured admin account; no per-user accounts, MFA, lockout or role-based sign-in.
 * JSON file store: unencrypted, single-process, no backups — fictional data only.
-* No backend, PostgreSQL or mobile synchronisation. Registered identities are **not** available on phones.
+* No backend or mobile synchronisation. Phones verify QR signatures offline, but identities reach them only via
+  the demo `npm run mobile:provision` step (bundled, unencrypted files).
+* The QR issuer key is a development key in `.env.local`. Production needs a protected signing service (HSM/KMS).
 * Professional registration details are recorded but not verified. No sign-in credentials are issued to staff.
 * RFID/NFC is modelled (`IdentityMethod = "NFC"`) but not implemented.
 * Role changes between medic / doctor / other categories require a new registration (display IDs are permanent).

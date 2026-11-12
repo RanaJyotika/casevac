@@ -4,7 +4,7 @@
 
 import React from 'react';
 import ReactTestRenderer from 'react-test-renderer';
-import { Text } from 'react-native';
+import { Alert, Text } from 'react-native';
 import App from '../App';
 
 // SafeAreaProvider renders nothing until it measures the screen; use the
@@ -45,15 +45,15 @@ function findInput(tree: Renderer, label: string) {
   );
 }
 
-async function signIn(tree: Renderer, id: string, pin: string) {
-  const idInput = findInput(tree, 'Clinician ID');
-  const pinInput = findInput(tree, 'PIN');
+async function signIn(tree: Renderer, id: string, password: string) {
+  const idInput = findInput(tree, 'User ID');
+  const passwordInput = findInput(tree, 'Password');
   await ReactTestRenderer.act(async () => {
     idInput.props.onChangeText(id);
-    pinInput.props.onChangeText(pin);
+    passwordInput.props.onChangeText(password);
   });
   await ReactTestRenderer.act(async () => {
-    findButton(tree, 'Sign in').props.onPress();
+    findButton(tree, 'Login').props.onPress();
     await wait(500);
   });
 }
@@ -66,38 +66,69 @@ async function renderApp(): Promise<Renderer> {
   return tree;
 }
 
-test('shows the login screen with demo-mode warning', async () => {
+test('shows the Jeevan login screen with only the expected controls', async () => {
   const tree = await renderApp();
   const text = allText(tree);
-  expect(text).toContain('Medic Sign In');
-  expect(text).toContain('DEMO MODE');
+  expect(text).toContain('JEEVAN');
+  expect(text).toContain('Medic Login');
+  expect(text).toContain('Forgot Password?');
+  expect(text).toContain('Demo mode');
+  expect(findInput(tree, 'User ID')).toBeDefined();
+  expect(findInput(tree, 'Password').props.secureTextEntry).toBe(true);
+  expect(findButton(tree, 'Login')).toBeDefined();
 });
 
 test('validates empty fields without signing in', async () => {
   const tree = await renderApp();
   await ReactTestRenderer.act(async () => {
-    findButton(tree, 'Sign in').props.onPress();
+    findButton(tree, 'Login').props.onPress();
   });
   const text = allText(tree);
-  expect(text).toContain('Enter your clinician ID.');
-  expect(text).toContain('Enter your PIN.');
-  expect(text).not.toContain('Medic Dashboard');
+  expect(text).toContain('Enter your user ID.');
+  expect(text).toContain('Enter your password.');
+  expect(text).not.toContain('CASUALTY OVERVIEW');
 });
 
 test('rejects unknown credentials', async () => {
   const tree = await renderApp();
-  await signIn(tree, 'MED-OTHER-99', '9999');
+  await signIn(tree, 'MED-OTHER-99', 'wrong-password');
   const text = allText(tree);
-  expect(text).toContain('SIGN-IN FAILED');
-  expect(text).not.toContain('Medic Dashboard');
+  expect(text).toContain('LOGIN FAILED');
+  expect(text).toContain('User ID or password not recognised.');
+  expect(text).not.toContain('CASUALTY OVERVIEW');
+});
+
+test('shows and hides the password', async () => {
+  const tree = await renderApp();
+  await ReactTestRenderer.act(async () => {
+    findButton(tree, 'Show password').props.onPress();
+  });
+  expect(findInput(tree, 'Password').props.secureTextEntry).toBe(false);
+  await ReactTestRenderer.act(async () => {
+    findButton(tree, 'Hide password').props.onPress();
+  });
+  expect(findInput(tree, 'Password').props.secureTextEntry).toBe(true);
+});
+
+test('Forgot Password only explains that reset is not available yet', async () => {
+  const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  const tree = await renderApp();
+  await ReactTestRenderer.act(async () => {
+    findButton(tree, 'Forgot Password?').props.onPress();
+  });
+  expect(alertSpy).toHaveBeenCalledWith(
+    'Forgot password',
+    expect.stringContaining('not available yet'),
+  );
+  expect(allText(tree)).toContain('Medic Login');
+  alertSpy.mockRestore();
 });
 
 test('demo account opens the Home screen', async () => {
   const tree = await renderApp();
   await signIn(tree, 'med-demo-01', '1234');
   const text = allText(tree);
-  expect(text).toContain('Medic Dashboard');
+  expect(text).toContain('CASUALTY OVERVIEW');
   expect(text).toContain('Scan Patient QR');
-  expect(text).toContain('EVAC-DEMO-001');
-  expect(text).toContain('Transfer pending');
+  expect(text).toContain('Cpl. R. Demo · Team A');
 });

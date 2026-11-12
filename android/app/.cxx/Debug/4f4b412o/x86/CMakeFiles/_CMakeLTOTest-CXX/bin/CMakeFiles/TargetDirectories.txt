@@ -1,0 +1,4 @@
+D:/VedicVaibhav/Casevac/casevac/android/app/.cxx/Debug/4f4b412o/x86/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/foo.dir
+D:/VedicVaibhav/Casevac/casevac/android/app/.cxx/Debug/4f4b412o/x86/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/boo.dir
+D:/VedicVaibhav/Casevac/casevac/android/app/.cxx/Debug/4f4b412o/x86/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/edit_cache.dir
+D:/VedicVaibhav/Casevac/casevac/android/app/.cxx/Debug/4f4b412o/x86/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/rebuild_cache.dir

@@ -1,6 +1,12 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { colors, spacing, typography } from '../theme/tokens';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  colors,
+  radius,
+  spacing,
+  touchTarget,
+  typography,
+} from '../theme/tokens';
 
 interface AppHeaderProps {
   /** Small upper-case product label, e.g. "CASEVAC". */
@@ -11,12 +17,34 @@ interface AppHeaderProps {
   right?: React.ReactNode;
   /** Optional second row, e.g. signed-in clinician. */
   children?: React.ReactNode;
+  /** Shows a Back control (48 dp) when provided. */
+  onBack?: () => void;
 }
 
-export function AppHeader({ eyebrow, title, right, children }: AppHeaderProps) {
+export function AppHeader({
+  eyebrow,
+  title,
+  right,
+  children,
+  onBack,
+}: AppHeaderProps) {
   return (
     <View style={styles.container}>
       <View style={[styles.topRow, !title && styles.topRowCompact]}>
+        {onBack ? (
+          <Pressable
+            onPress={onBack}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+            hitSlop={4}
+            style={({ pressed }) => [
+              styles.back,
+              pressed && styles.backPressed,
+            ]}
+          >
+            <Text style={styles.backText}>‹</Text>
+          </Pressable>
+        ) : null}
         <View style={styles.titles}>
           <Text
             style={[styles.eyebrow, !title && styles.eyebrowStrong]}
@@ -60,6 +88,23 @@ const styles = StyleSheet.create({
   titles: {
     flex: 1,
     gap: 2,
+  },
+  back: {
+    width: touchTarget,
+    height: touchTarget,
+    marginLeft: -spacing.md,
+    marginRight: -spacing.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.sm,
+  },
+  backPressed: {
+    backgroundColor: colors.surface,
+  },
+  backText: {
+    fontSize: 32,
+    lineHeight: 36,
+    color: colors.textPrimary,
   },
   eyebrow: {
     ...typography.eyebrow,

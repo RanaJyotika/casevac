@@ -8,7 +8,8 @@ import { buttonClasses } from "@/components/ui/button";
 import { Alert, DefinitionGrid, PageHeader, Panel } from "@/components/ui/layout";
 import { requireAdmin } from "@/lib/auth/session";
 import { getRepository } from "@/lib/data";
-import { QR_FORMAT_VERSION } from "@/lib/domain/qr-format";
+import { getIssuerKey } from "@/lib/crypto/qr-issuer";
+import { QR_FORMAT_DESCRIPTION } from "@/lib/domain/qr-format";
 import { param } from "@/lib/format";
 import { getDashboardSummary } from "@/lib/services/stats-service";
 import packageJson from "../../../../package.json";
@@ -26,6 +27,7 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
   const notice = NOTICES[param(sp.notice)];
   const repo = getRepository();
   const summary = await getDashboardSummary();
+  const issuer = getIssuerKey();
 
   return (
     <>
@@ -40,7 +42,17 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
               { label: "Environment", value: process.env.NODE_ENV === "production" ? "Production build" : "Development" },
               { label: "Data source", value: <span className="flex flex-wrap items-center gap-2"><Badge tone="warn">DEMO</Badge> {repo.description}</span> },
               { label: "Authentication", value: "Demo administrator session (signed cookie, 8 h)" },
-              { label: "QR payload format", value: `CASEVAC:${QR_FORMAT_VERSION}:<token>`, mono: true },
+              { label: "QR payload format", value: QR_FORMAT_DESCRIPTION, mono: true },
+              {
+                label: "QR signing key",
+                value: issuer.ok ? (
+                  <span className="flex flex-wrap items-center gap-2">
+                    <Badge tone="warn">DEVELOPMENT</Badge> Ed25519 · key ID <span className="font-mono">{issuer.key.keyId}</span>
+                  </span>
+                ) : (
+                  <span className="flex flex-wrap items-center gap-2"><Badge tone="danger">Not configured</Badge> {issuer.message}</span>
+                ),
+              },
               { label: "Backend / PostgreSQL", value: "Not configured" },
               { label: "Mobile synchronisation", value: "Not connected" },
               { label: "RFID / NFC", value: "Not available (future phase)" },
@@ -67,19 +79,28 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
       <Panel title="Mobile integration">
         <div className="flex flex-col gap-4 p-5 text-sm leading-6 text-ink-2">
           <Alert tone="warn" title="Not synchronised">
-            Generating a QR here does <strong>not</strong> make the patient available on a disconnected medic phone.
-            Phones need a provisioned identity directory, which requires the shared backend, device enrolment and
-            encryption. None of these exist yet.
+            Generating a QR here does <strong>not</strong> make the patient&apos;s details available on a disconnected
+            medic phone. A phone can verify the QR signature offline, but names and revocations come from an identity
+            directory provisioned to it beforehand. Live provisioning needs the shared backend, device enrolment and
+            encryption, none of which exist yet.
           </Alert>
           <ol className="flex list-decimal flex-col gap-1.5 pl-5">
-            <li>Mobile app scans the wristband and parses <span className="font-mono">CASEVAC:1:&lt;token&gt;</span>.</li>
-            <li>It looks the token up in a locally cached, encrypted identity directory (provisioned while online).</li>
-            <li>If found, it shows the verified identity; if not, it reports “Identity not available offline”.</li>
+            <li>The medic app scans the wristband and checks the Ed25519 signature against its trusted issuer public key.</li>
+            <li>It looks the credential up in its local identity directory to check revocation and show the soldier&apos;s details.</li>
+            <li>A verified credential missing from the directory is shown as “Patient details unavailable offline”, never guessed.</li>
             <li>Evacuation incidents and clinical events stay in the mobile app and sync later via the backend.</li>
           </ol>
+          {issuer.ok ? (
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted">Issuer public key (phones trust this)</span>
+              <code className="break-all rounded border border-line-soft bg-canvas p-2 font-mono text-xs">{issuer.key.publicKeyBase64Url}</code>
+            </div>
+          ) : null}
           <p>
-            For integration testing you can download the directory format the backend will serve. It contains only active
-            soldiers with an active QR and minimal identity fields.
+            <strong>Demo provisioning:</strong> run <span className="font-mono">npm run mobile:provision</span> in
+            admin-dashboard to write the identity directory and trusted public key into the mobile app, then reload the
+            app. You can also download the directory for inspection; it lists active soldiers with an active signed QR
+            plus the revoked/replaced credential list.
           </p>
           <div>
             <a href="/api/integration/identity-directory" className={buttonClasses("secondary", "md")}>

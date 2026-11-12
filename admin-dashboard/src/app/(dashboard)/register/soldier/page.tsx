@@ -24,7 +24,7 @@ export default function RegisterSoldierPage() {
               <input type="radio" id="method-qr" name="method-display" checked readOnly className="mt-1" />
               <label htmlFor="method-qr" className="flex flex-col gap-0.5 text-sm">
                 <span className="font-semibold">QR wristband</span>
-                <span className="text-xs text-muted">Random opaque token; printable label</span>
+                <span className="text-xs text-muted">Digitally signed credential; printable label</span>
               </label>
             </div>
             <div className="flex items-start gap-3 rounded-md border border-line bg-canvas p-3 text-muted">
@@ -44,8 +44,8 @@ export default function RegisterSoldierPage() {
                 The next display ID is assigned (e.g. <span className="font-mono">PAT-00001</span>) plus a random internal ID.
               </li>
               <li>
-                A separate random token is generated. The QR encodes only <span className="font-mono">CASEVAC:1:&lt;token&gt;</span> —
-                no name, service number or medical data.
+                A credential is issued and signed with the dashboard&apos;s Ed25519 issuer key. The QR holds only
+                credential and patient IDs, an issue time and the signature — no name, service number or medical data.
               </li>
               <li>The QR is shown on the profile for printing or download.</li>
             </ol>

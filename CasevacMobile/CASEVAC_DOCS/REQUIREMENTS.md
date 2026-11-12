@@ -1,6 +1,6 @@
 # CASEVAC — Requirements and Scope
 
-**Version:** MVP draft v0.1 · **Last revised:** 12 November 2026  
+**Version:** MVP draft v0.2 · **Last revised:** 12 November 2026 (client UI update: tablet, landscape, dashboard)  
 **Classification:** Product working draft; not a clinical specification or approval.
 
 ## Requirement status key
@@ -36,6 +36,24 @@
 | FR-20 | Support secure NFC/RFID identification/rewriting | Future | Deferred until hardware selected |
 | FR-21 | Optional 9-Line MEDEVAC request form | P2 | Document-derived fields, module inclusion requires client decision |
 
+## A2. Client update — tablet landscape UI and command dashboard (12 Nov 2026)
+
+| ID | Requirement | Priority | Status / acceptance evidence |
+| --- | --- | --- | --- |
+| FR-22 | App runs landscape-only on Android tablets (baseline 1280 × 800 dp) with left navigation + content layout | P0 | Baseline; login done; see NFR-10 for the Android 16 caveat |
+| FR-23 | Home shows summary cards: Total, RED, YELLOW, GREEN, BLACK, Active Evacuations, Pending Handover, Completed Evacuations | P0 | Baseline; counts match stored records |
+| FR-24 | Home shows casualties by company as a stacked bar chart (6 companies; segments by triage category) | P0 | Baseline; company list to be confirmed |
+| FR-25 | Home shows casualties by triage category (horizontal bar or donut) with counts | P0 | Baseline; horizontal bar preferred |
+| FR-26 | Home shows recent casualty activity (ID, name, company, status, last update) | P1 | Baseline |
+| FR-27 | Home shows evacuation status flow (awaiting pickup → in transfer → handed over → completed) and quick actions: Scan Patient QR, Enter Patient ID, Temporary Evacuation (Receive Handover / Track Casualty via navigation) | P0 | Built with demo data; status definitions need client approval |
+| FR-27a | Manual Patient ID entry: exact match against the tablet's identity directory; result marked as manual and wristband not verified; unknown ID never opens a profile | P0 | Built; tested |
+| FR-27b | Temporary (anonymous) evacuation for a casualty without an ID or with a destroyed wristband | P0 | Entry point built; record creation needs evacuation storage (next phase) |
+| FR-28 | Each casualty/evacuation records a triage category RED / YELLOW / GREEN / BLACK as an attributed, time-stamped event (re-triage keeps history) | P0 | Required for FR-23–25; definitions need clinical approval |
+| FR-29 | Each casualty has a company attribute | P0 | Required for FR-24; source (registration vs. entered at incident) is a client decision |
+| FR-30 | Consciousness decision step routes to initial assessment (Yes) or temporary registration (No) | P1 | From client 10-screen workflow |
+| FR-31 | Prepare Evacuation records date/time, assisting staff, condition during evacuation and mode (ambulance / helicopter / stretcher) | P1 | From client 10-screen workflow |
+| FR-32 | Evacuation Completed screen summarises casualty, triage, interventions and timeline, with next actions | P1 | Must not imply digital transfer receipt |
+
 ## B. AFMSF-21 clinical field mapping
 
 This is a *source-informed starting dictionary* from the four-page client PDF; confirm labels, mandatory rules and clinical workflows with designated subject-matter experts.
@@ -68,6 +86,10 @@ The supplied image depicts nine operational request lines: (1) pickup grid/GPS/m
 | NFR-07 | Traceability | event_id, author, observed_at, recorded_at | Signed/authenticated events and full audit trail |
 | NFR-08 | Hardware | Test QR scanner on one Android device | Validate supported Android models and transfer radios |
 | NFR-09 | Handover safety | Distinguish saved/transfer pending/acknowledged | Verifiable import, read-back and recipient acknowledgement |
+| NFR-10 | Tablet landscape | Landscape requested on all screens; layouts verified at 1280 × 800 and 960 × 600 dp; stack if shown in portrait | Android 16+ may ignore the lock (API 36 opt-out ends at API 37); device-management rotation lock if strict landscape is mandatory |
+| NFR-11 | Readability | Client type scale: titles 24–28, headings 18–22, card values 24–32, inputs/buttons 16–18, tables 14–15, helper ≥ 12 | Field test at arm's length and in bright light |
+| NFR-12 | Dashboard honesty | Counts labelled "On this tablet" with update time | Force-wide totals only from a synchronised backend |
+| NFR-13 | Triage visibility | Colour always paired with text label and count | Accessibility and sunlight review |
 
 ## E. Core data constraints
 
@@ -105,3 +127,8 @@ The supplied image depicts nine operational request lines: (1) pickup grid/GPS/m
 - First allowed transfer mode (Bluetooth vs Wi-Fi Direct vs USB) and security constraints.
 - Whether cloud/backend may contain sensitive data, hosting policy, data retention and audit requirements.
 - Which features constitute the client's *approved* MVP vs demonstration-only mockups.
+- The six company identifiers (examples used: Alpha–Foxtrot) and whether company comes from registration or is entered per casualty.
+- Definitions of evacuation statuses for the dashboard (awaiting pickup, in transfer, handed over, completed) and how they relate to digital transfer states.
+- Whether dashboard figures should ever show force-wide totals (needs sync) or only the tablet's own records.
+- Target tablet models and Android versions; whether device management will enforce landscape rotation lock.
+- Order of client screens 8 (Handover Details) and 9 (Prepare Evacuation).

@@ -1,8 +1,9 @@
 # CASEVAC — Project Overview
 
-**Project:** Digital Evacuation Program (CASEVAC)  
+**Project:** Digital Evacuation Program (CASEVAC) · **App name:** Jeevan  
 **Focus:** Point A → Point B casualty documentation and clinical handover  
-**Current implementation direction:** QR-based identification; offline-first Android app; lightweight web admin  
+**Current implementation direction:** QR-based identification; offline-first **Android tablet app, landscape-only**; lightweight web admin  
+**Client UI update (12 Nov 2026):** tablet-first, landscape-only, operational dashboard UI — see `UI_DESIGN_GUIDELINES.md` v2  
 **Status:** Client-review baseline, not deployment approval
 
 ## 1. Problem statement
@@ -11,7 +12,7 @@ In pre-hospital evacuation, information about a casualty can be fragmented betwe
 
 ## 2. Proposed solution
 
-Build a **React Native Android application** for verified medics to document an ongoing evacuation, backed by a basic web admin dashboard for personnel enrolment and issuing unique patient QR wristbands.
+Build a **React Native Android tablet application — "Jeevan"**, used in landscape on ~10-inch tablets — for verified medics to document an ongoing evacuation, backed by a basic web admin dashboard for personnel enrolment and issuing unique patient QR wristbands. The app opens on a **command dashboard** (casualty summary cards, company-wise and triage-category charts, recent activity, quick actions).
 
 - **Admin** verifies/registers personnel, generates a random permanent Patient ID and issues an associated QR token.
 - **Medic Team A** authenticates, scans QR (or uses a safe unknown-casualty process), creates a new evacuation incident and records initial care offline.
@@ -29,6 +30,8 @@ Build a **React Native Android application** for verified medics to document an 
 | Distinct evacuation incident per injury/episode | Unlimited automatic sharing across disconnected devices |
 | Offline assessment, vitals, GCS and treatment logging | Production clinical decision support/AI diagnosis |
 | Timeline and prepared handover summary | Real-time GPS tracking or tactical command systems |
+| Home command dashboard (counts and charts from records on the tablet) | Force-wide live totals before server sync exists |
+| Triage category (RED / YELLOW / GREEN / BLACK) and company per casualty | Phone-sized portrait layouts |
 | Future-looking offline transfer interfaces | Guaranteed Bluetooth/Wi-Fi Direct/USB transfer without testing |
 | Unknown casualty and manual-ID fallback | Operational deployment with real protected patient data |
 | Future NFC/RFID-ready identity abstraction | RFID tag writing without suitable chip/readers |
@@ -105,6 +108,8 @@ The AFMSF-21 form uses stage labels such as RAP/ADS and FAC/FSC in different sec
 - **Data volume:** long notes/photos may prevent compact direct transfer over some methods; photo inclusion is not a day-3 requirement.
 - **Clinical rules:** mandatory fields, priorities, stages, scoring and signature rules require clinical review.
 - **Security approval:** devices, radios, network services and personnel records require client policy confirmation.
+- **Landscape lock on Android 16+:** for apps targeting API 36 the OS ignores orientation locks on tablets; a temporary opt-out is declared but ends at API 37. Layouts must survive portrait, or the client's device management must lock rotation.
+- **Dashboard scope:** without server sync, dashboard figures cover only records on the tablet showing them.
 
 ## 10. Success definition for the 2–3-day sprint
 

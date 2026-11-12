@@ -128,8 +128,15 @@ function SoldierProfile({ person, credentials }: { person: SoldierRecord; creden
                 </div>
                 <span className="font-mono text-base font-semibold">{person.displayId}</span>
                 <span className="text-center text-xs text-muted">
-                  Payload format CASEVAC:{active.formatVersion}:&lt;random token&gt; · Issued {formatDateTime(active.issuedAt)}
+                  {active.formatVersion === 2
+                    ? `Signed credential (Ed25519, key ${active.keyId}) · Issued ${formatDateTime(active.issuedAt)}`
+                    : `Legacy unsigned format v1 · Issued ${formatDateTime(active.issuedAt)}`}
                 </span>
+                {active.formatVersion !== 2 ? (
+                  <Alert tone="warn" title="Unsigned legacy QR">
+                    The medic app rejects unsigned wristbands. Reissue this QR to produce a digitally signed credential.
+                  </Alert>
+                ) : null}
                 <span className="text-xs">
                   {active.wristbandIssuedAt ? (
                     <Badge tone="ok">Wristband issued {formatDate(active.wristbandIssuedAt)}</Badge>
@@ -152,8 +159,9 @@ function SoldierProfile({ person, credentials }: { person: SoldierRecord; creden
                   title={`Reissue QR for ${person.displayId}?`}
                   description={
                     <>
-                      A new random token (v{active.version + 1}) replaces v{active.version}. The old wristband will stop
-                      resolving. The patient identity and history are kept.
+                      A new signed credential (v{active.version + 1}) replaces v{active.version}. The old wristband is
+                      marked replaced and phones reject it once their identity directory is refreshed. The patient
+                      identity and history are kept.
                     </>
                   }
                   confirmLabel="Reissue QR"
@@ -193,7 +201,7 @@ function SoldierProfile({ person, credentials }: { person: SoldierRecord; creden
                     triggerLabel="Issue QR"
                     triggerVariant="primary"
                     title={`Issue a new QR for ${person.displayId}?`}
-                    description="A new random token will be generated and linked to this patient identity."
+                    description="A new digitally signed credential will be generated and linked to this patient identity."
                     confirmLabel="Issue QR"
                   />
                 ) : null}

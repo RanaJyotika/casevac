@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, radius, spacing } from '../theme/tokens';
+import { colors, radius, spacing, typography } from '../theme/tokens';
 import type { StatusTone } from '../utils/format';
 
 interface StatusBadgeProps {
@@ -79,8 +79,7 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   label: {
-    fontSize: 12,
-    lineHeight: 16,
+    ...typography.helper,
     fontWeight: '500',
   },
 });

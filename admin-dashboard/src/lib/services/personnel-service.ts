@@ -70,8 +70,9 @@ export async function registerSoldier(
         status: "New soldiers must be Active to receive a QR.",
       });
     }
-    const credential = await issueCredentialTx(tx, audit, person, actor);
-    return ok({ person, credential });
+    const issued = await issueCredentialTx(tx, audit, person, actor);
+    if (!issued.ok) return issued;
+    return ok({ person, credential: issued.value });
   });
 }
 

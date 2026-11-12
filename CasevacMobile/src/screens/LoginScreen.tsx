@@ -1,59 +1,89 @@
 /**
  * M01 — Medic Login (CASEVAC_DOCS/SCREEN_SPECIFICATIONS.md)
- * Demo authentication only; clearly labelled as such.
+ *
+ * Tablet landscape split layout (UI_DESIGN_GUIDELINES.md §5):
+ *   left  — Jeevan branding and short instructions
+ *   right — bordered login box: User ID, Password, Login, Forgot Password
+ * Falls back to a stacked layout if the window is narrow or portrait.
+ *
+ * Demo authentication only (services/demoAuth.ts) and labelled as such.
+ * Forgot Password is a placeholder until account recovery exists.
  */
 import React, { useRef, useState } from 'react';
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInputInstance,
+  useWindowDimensions,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  AppHeader,
   BrandMark,
+  EyeIcon,
   FormField,
+  LockIcon,
   Notice,
   PrimaryButton,
   StatusBadge,
+  UserIcon,
 } from '../components';
 import { MOCK_CONNECTIVITY } from '../data/mockData';
 import { demoSignIn } from '../services/demoAuth';
-import { colors, fonts, spacing, typography } from '../theme/tokens';
+import {
+  colors,
+  fonts,
+  layout,
+  radius,
+  spacing,
+  touchTarget,
+  typography,
+} from '../theme/tokens';
 import type { Clinician } from '../types';
+
+const APP_NAME = 'Jeevan';
+
+const INSTRUCTIONS = [
+  'Sign in with the user ID and password issued by your unit registrar.',
+  'Jeevan works without a network. Records are saved on this tablet.',
+  'Demonstration build: use fictional casualty data only.',
+];
 
 interface LoginScreenProps {
   onSignIn: (clinician: Clinician) => void;
 }
 
 interface FieldErrors {
-  clinicianId?: string;
-  pin?: string;
+  userId?: string;
+  password?: string;
 }
 
-const PIN_PATTERN = /^\d{4,6}$/;
-
 export function LoginScreen({ onSignIn }: LoginScreenProps) {
-  const [clinicianId, setClinicianId] = useState('');
-  const [pin, setPin] = useState('');
+  const { width, height } = useWindowDimensions();
+  const split = width >= layout.splitBreakpoint && width > height;
+  // Panels run edge to edge; insets (status bar, cutout) pad their content.
+  const insets = useSafeAreaInsets();
+
+  const [userId, setUserId] = useState('');
+  const [password, setPassword] = useState('');
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [authError, setAuthError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const pinRef = useRef<TextInputInstance>(null);
+  const passwordRef = useRef<TextInputInstance>(null);
 
   const validate = (): FieldErrors => {
     const errors: FieldErrors = {};
-    if (!clinicianId.trim()) {
-      errors.clinicianId = 'Enter your clinician ID.';
+    if (!userId.trim()) {
+      errors.userId = 'Enter your user ID.';
     }
-    if (!pin) {
-      errors.pin = 'Enter your PIN.';
-    } else if (!PIN_PATTERN.test(pin)) {
-      errors.pin = 'PIN must be 4–6 digits.';
+    if (!password) {
+      errors.password = 'Enter your password.';
     }
     return errors;
   };
@@ -65,184 +95,373 @@ export function LoginScreen({ onSignIn }: LoginScreenProps) {
     setAuthError(null);
     const errors = validate();
     setFieldErrors(errors);
-    if (errors.clinicianId || errors.pin) {
+    if (errors.userId || errors.password) {
       return;
     }
 
     setSubmitting(true);
     try {
-      const clinician = await demoSignIn(clinicianId, pin);
+      const clinician = await demoSignIn(userId, password);
       if (clinician) {
-        setPin('');
+        setPassword('');
         onSignIn(clinician);
       } else {
-        setAuthError(
-          'Clinician ID or PIN not recognised. Only the demo account is available.',
-        );
+        setAuthError('User ID or password not recognised.');
       }
     } finally {
       setSubmitting(false);
     }
   };
 
+  const handleForgotPassword = () => {
+    Alert.alert(
+      'Forgot password',
+      'Password reset is not available yet. Contact your unit registrar.',
+    );
+  };
+
+  const connectivity = MOCK_CONNECTIVITY === 'offline' ? 'Offline' : 'Online';
+
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-      <AppHeader
-        eyebrow="CASEVAC"
-        right={
-          <StatusBadge
-            label={MOCK_CONNECTIVITY === 'offline' ? 'Offline' : 'Online'}
-          />
-        }
-      />
+    <View style={styles.root}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
           style={styles.flex}
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.page, split && styles.pageSplit]}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.intro}>
-            <BrandMark />
-            <View style={styles.introText}>
-              <Text style={styles.title} accessibilityRole="header">
-                Medic Sign In
-              </Text>
-              <Text style={styles.subtitle}>
-                Digital Evacuation Program — casualty documentation from Point
-                A to Point B.
+          {/* Left: branding and instructions */}
+          <View
+            style={[
+              styles.brandPanel,
+              split && styles.brandPanelSplit,
+              {
+                paddingTop: insets.top + PANEL_PADDING,
+                paddingBottom: (split ? insets.bottom : 0) + PANEL_PADDING,
+                paddingLeft: insets.left + PANEL_PADDING,
+              },
+            ]}
+          >
+            <View style={styles.brandMain}>
+              <View style={styles.brandTop}>
+                <View style={styles.brandRow}>
+                  <BrandMark />
+                  <Text style={styles.brandName} accessibilityRole="header">
+                    {APP_NAME.toUpperCase()}
+                  </Text>
+                </View>
+                <Text style={styles.tagline}>
+                  Casualty evacuation records, from point of injury to medical
+                  handover.
+                </Text>
+              </View>
+
+              <View style={styles.instructions}>
+                <Text style={styles.instructionsTitle}>BEFORE YOU SIGN IN</Text>
+                {INSTRUCTIONS.map((text, index) => (
+                  <View key={text} style={styles.instructionRow}>
+                    <Text style={styles.instructionNumber}>{index + 1}</Text>
+                    <Text style={styles.instructionText}>{text}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            <Text style={[styles.meta, styles.mono]}>v0.1.0-demo</Text>
+          </View>
+
+          {/* Right: login form */}
+          <View
+            style={[
+              styles.formPanel,
+              split && styles.formPanelSplit,
+              {
+                paddingTop: (split ? insets.top : 0) + layout.contentPadding,
+                paddingBottom: insets.bottom + layout.contentPadding,
+                paddingRight: insets.right + layout.contentPadding,
+              },
+            ]}
+          >
+            <View style={styles.statusRow}>
+              <StatusBadge label={connectivity} />
+            </View>
+
+            <View style={styles.formCenter}>
+              <View style={styles.formBox}>
+                <Text style={styles.formTitle} accessibilityRole="header">
+                  Medic Login
+                </Text>
+
+                <FormField
+                  label="User ID"
+                  value={userId}
+                  onChangeText={text => {
+                    setUserId(text);
+                    if (fieldErrors.userId) {
+                      setFieldErrors(prev => ({ ...prev, userId: undefined }));
+                    }
+                  }}
+                  placeholder="Enter User ID"
+                  leading={<UserIcon />}
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                  autoComplete="username"
+                  textContentType="username"
+                  returnKeyType="next"
+                  onSubmitEditing={() => passwordRef.current?.focus()}
+                  submitBehavior="submit"
+                  error={fieldErrors.userId}
+                  editable={!submitting}
+                />
+                <FormField
+                  ref={passwordRef}
+                  label="Password"
+                  value={password}
+                  onChangeText={text => {
+                    setPassword(text);
+                    if (fieldErrors.password) {
+                      setFieldErrors(prev => ({
+                        ...prev,
+                        password: undefined,
+                      }));
+                    }
+                  }}
+                  placeholder="Enter Password"
+                  leading={<LockIcon />}
+                  trailing={
+                    <Pressable
+                      onPress={() => setPasswordVisible(v => !v)}
+                      accessibilityRole="button"
+                      accessibilityLabel={
+                        passwordVisible ? 'Hide password' : 'Show password'
+                      }
+                      style={({ pressed }) => [
+                        styles.eyeButton,
+                        pressed && styles.eyeButtonPressed,
+                      ]}
+                    >
+                      <EyeIcon crossed={passwordVisible} />
+                    </Pressable>
+                  }
+                  secureTextEntry={!passwordVisible}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="password"
+                  textContentType="password"
+                  returnKeyType="go"
+                  onSubmitEditing={handleSubmit}
+                  error={fieldErrors.password}
+                  editable={!submitting}
+                />
+
+                {authError ? (
+                  <Notice
+                    tone="error"
+                    title="LOGIN FAILED"
+                    message={authError}
+                  />
+                ) : null}
+
+                <PrimaryButton
+                  title="Login"
+                  onPress={handleSubmit}
+                  loading={submitting}
+                  accessibilityHint="Signs in and opens the medic dashboard"
+                />
+
+                <Pressable
+                  onPress={handleForgotPassword}
+                  accessibilityRole="button"
+                  accessibilityLabel="Forgot Password?"
+                  accessibilityHint="Password reset is not available yet"
+                  style={({ pressed }) => [
+                    styles.forgot,
+                    pressed && styles.forgotPressed,
+                  ]}
+                >
+                  <Text style={styles.forgotText}>Forgot Password?</Text>
+                </Pressable>
+              </View>
+
+              <Text style={styles.demo}>
+                Demo mode · login not verified · MED-DEMO-01 / 1234
               </Text>
             </View>
           </View>
-
-          <Notice
-            title="DEMO MODE"
-            message="Credentials are not verified. Use fictional data only."
-          />
-
-          <View style={styles.form}>
-            <FormField
-              label="Clinician ID"
-              value={clinicianId}
-              onChangeText={text => {
-                setClinicianId(text);
-                if (fieldErrors.clinicianId) {
-                  setFieldErrors(prev => ({ ...prev, clinicianId: undefined }));
-                }
-              }}
-              placeholder="e.g. MED-DEMO-01"
-              autoCapitalize="characters"
-              autoCorrect={false}
-              autoComplete="username"
-              returnKeyType="next"
-              onSubmitEditing={() => pinRef.current?.focus()}
-              submitBehavior="submit"
-              error={fieldErrors.clinicianId}
-              editable={!submitting}
-            />
-            <FormField
-              ref={pinRef}
-              label="PIN"
-              value={pin}
-              onChangeText={text => {
-                setPin(text.replace(/\D/g, ''));
-                if (fieldErrors.pin) {
-                  setFieldErrors(prev => ({ ...prev, pin: undefined }));
-                }
-              }}
-              placeholder="4–6 digits"
-              secureTextEntry
-              keyboardType="number-pad"
-              maxLength={6}
-              autoComplete="password"
-              returnKeyType="go"
-              onSubmitEditing={handleSubmit}
-              helper="Demo account: MED-DEMO-01 · PIN 1234"
-              error={fieldErrors.pin}
-              editable={!submitting}
-            />
-
-            {authError ? (
-              <Notice tone="error" title="SIGN-IN FAILED" message={authError} />
-            ) : null}
-
-            <PrimaryButton
-              title="Sign in"
-              onPress={handleSubmit}
-              loading={submitting}
-              accessibilityHint="Signs in with the demo account and opens the medic dashboard"
-              style={styles.submit}
-            />
-          </View>
-
-          <Text style={styles.help}>
-            Trouble signing in? Contact your unit registrar.
-          </Text>
         </ScrollView>
       </KeyboardAvoidingView>
-
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>Synthetic data only</Text>
-        <Text style={[styles.footerText, styles.mono]}>v0.1.0-demo</Text>
-      </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
+const PANEL_PADDING = layout.contentPadding + spacing.sm;
+
 const styles = StyleSheet.create({
-  safeArea: {
+  root: {
     flex: 1,
     backgroundColor: colors.background,
   },
   flex: {
     flex: 1,
   },
-  content: {
-    paddingHorizontal: 20,
-    paddingTop: spacing.xxl + spacing.sm,
-    paddingBottom: spacing.xl,
-    gap: 28,
+  page: {
+    flexGrow: 1,
   },
-  intro: {
-    gap: spacing.lg,
+  pageSplit: {
+    flexDirection: 'row',
   },
-  introText: {
-    gap: 6,
+
+  /* Branding panel */
+  brandPanel: {
+    paddingRight: PANEL_PADDING,
+    gap: spacing.xl,
+    backgroundColor: colors.surface,
+    borderBottomWidth: layout.borderWidth,
+    borderBottomColor: colors.border,
   },
-  title: {
-    ...typography.title,
+  brandPanelSplit: {
+    width: '42%',
+    maxWidth: 560,
+    borderBottomWidth: 0,
+    borderRightWidth: layout.borderWidth,
+    borderRightColor: colors.border,
+  },
+  brandMain: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    gap: spacing.xxl,
+  },
+  brandTop: {
+    gap: spacing.md,
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  brandName: {
+    fontSize: 34,
+    lineHeight: 40,
+    fontWeight: '700',
+    letterSpacing: 3,
     color: colors.textPrimary,
   },
-  subtitle: {
-    ...typography.bodySmall,
+  tagline: {
+    ...typography.body,
+    fontSize: 18,
+    lineHeight: 26,
+    color: colors.textSecondary,
+    maxWidth: 440,
+  },
+  instructions: {
+    padding: layout.cardPadding,
+    gap: spacing.md,
+    borderWidth: layout.borderWidth,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    backgroundColor: colors.background,
+  },
+  instructionsTitle: {
+    ...typography.sectionTitle,
     color: colors.textSecondary,
   },
-  form: {
-    gap: 18,
-  },
-  submit: {
-    marginTop: 6,
-  },
-  help: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-  footer: {
+  instructionRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+    gap: spacing.md,
+    alignItems: 'flex-start',
   },
-  footerText: {
+  instructionNumber: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: layout.borderWidth,
+    borderColor: colors.borderStrong,
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    ...typography.label,
+    lineHeight: 26,
+    color: colors.textPrimary,
+  },
+  instructionText: {
+    ...typography.body,
+    flex: 1,
+    color: colors.textPrimary,
+  },
+  meta: {
     ...typography.helper,
     color: colors.textSecondary,
   },
   mono: {
     fontFamily: fonts.mono,
+  },
+
+  /* Form panel */
+  formPanel: {
+    paddingLeft: layout.contentPadding,
+    gap: spacing.lg,
+    alignItems: 'center',
+  },
+  formPanelSplit: {
+    flex: 1,
+  },
+  formCenter: {
+    flexGrow: 1,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.lg,
+  },
+  statusRow: {
+    alignSelf: 'stretch',
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  formBox: {
+    width: '100%',
+    maxWidth: 480,
+    padding: spacing.xl,
+    gap: 20,
+    borderWidth: layout.borderWidth,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    backgroundColor: colors.background,
+  },
+  formTitle: {
+    ...typography.title,
+    color: colors.textPrimary,
+  },
+  eyeButton: {
+    width: touchTarget,
+    height: layout.inputHeight - 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.sm,
+  },
+  eyeButtonPressed: {
+    backgroundColor: colors.surface,
+  },
+  forgot: {
+    alignSelf: 'center',
+    minHeight: touchTarget,
+    paddingHorizontal: spacing.md,
+    justifyContent: 'center',
+    borderRadius: radius.sm,
+  },
+  forgotPressed: {
+    backgroundColor: colors.surface,
+  },
+  forgotText: {
+    ...typography.body,
+    color: colors.primary,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+  },
+  demo: {
+    ...typography.helper,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
 });

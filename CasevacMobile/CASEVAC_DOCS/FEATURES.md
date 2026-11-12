@@ -1,6 +1,6 @@
 # CASEVAC — Feature Catalogue
 
-**Baseline:** QR-first, Android-first, 2–3-day demonstration build.  
+**Baseline:** QR-first, **Android tablet, landscape-only** ("Jeevan"), demonstration build. Client UI update 12 Nov 2026.  
 **Legend:** `MVP-P0` essential for core demo, `MVP-P1` stretch, `SPIKE` technical experiment, `LATER` not in basic sprint.
 
 ## 1. Web Admin Dashboard
@@ -17,12 +17,17 @@
 | RFID provisioning | LATER | Secure writable NFC chip workflow, no hardware yet |
 | Audit/admin reports | LATER | Real roles, traceable changes, monitoring |
 
-## 2. Medic Android App
+## 2. Medic Tablet App (Jeevan, landscape)
 
 | Feature | Priority | Behaviour / notes |
 | --- | --- | --- |
-| Login / demo unlock | MVP-P0 | Clear demo mode; no false claim of real medic credential verification |
-| Home | MVP-P0 | Scan QR, active evacuations, local records, pending transfers/sync |
+| Login / demo unlock | MVP-P0 | Split layout: branding + instructions / login box. User ID, password, forgot-password placeholder; clear demo mode |
+| App shell | MVP-P0 | Top bar (app name, page title, offline/sync status, clinician, log out) + left module navigation |
+| Home command dashboard | MVP-P0 | Built with demo data. Quick actions (Scan Patient QR, Enter Patient ID, Temporary Evacuation); summary cards (Total, RED, YELLOW, GREEN, BLACK, Active, Pending handover, Completed); company-wise stacked bar; triage horizontal bar; recent activity; evacuation status flow |
+| Triage category | MVP-P0 | RED / YELLOW / GREEN / BLACK as large selectable cards; colour + text label always |
+| Consciousness decision | MVP-P1 | Yes → initial assessment; No → temporary registration |
+| Prepare evacuation | MVP-P1 | Date/time, assisting staff, condition, mode (ambulance / helicopter / stretcher) |
+| Evacuation completed summary | MVP-P1 | Casualty, triage, interventions, timeline; next casualty / track / report actions |
 | Scan QR | MVP-P0 | Camera permission, valid/invalid/unknown token states |
 | Manual lookup | MVP-P0 | Manual Patient ID; show not-cached/not-authorised status |
 | Unknown casualty | MVP-P0 | Generate temporary ID and begin care offline |
@@ -72,8 +77,14 @@ Digital field validation, diagnosis vocabularies, care-stage naming and required
 
 For the first UI implementation, keep explicit capability flags in development (for example, `enableRealTransfer`, `enableServerSync`, `enableNfc`). A feature not implemented must show **Unavailable / Demo / Coming later**, not a success banner. Never ship mock credentials or mock clinical history as real functionality.
 
-## 7. Minimum meaningful demo sequence
+## 7. Tablet UI rules (client, 12 Nov 2026)
 
-`Register fictional Soldier → Issue QR → Scan on phone → Start Incident → Save Assessment → Save Vitals → Record Treatment → View Timeline → Prepare Handover → Display accurate pending status`.
+Landscape only · large touch targets · bordered boxes and sections · font sizes readable from a distance · minimal
+scrolling · side-by-side layouts · dashboard home · fast access under pressure. Details and frozen values:
+`UI_DESIGN_GUIDELINES.md` v2.
+
+## 8. Minimum meaningful demo sequence
+
+`Register fictional Soldier → Issue QR → Scan on tablet → Start Incident → Save Assessment → Save Vitals → Record Treatment → View Timeline → Prepare Handover → Display accurate pending status`.
 
 Once that works reliably, build the admin directory and clinician registration polish, then consider one real transfer spike.

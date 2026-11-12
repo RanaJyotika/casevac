@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "issuer:keygen": "node scripts/generate-qr-issuer-key.mjs",
+    "mobile:provision": "tsx --env-file-if-exists=.env.local scripts/provision-mobile-demo.ts"
   },
   "dependencies": {
     "lucide-react": "^1.72.0",
@@ -26,6 +28,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.6",
     "tailwindcss": "4.3.3",
+    "tsx": "^4.23.15",
     "typescript": "^5",
     "vitest": "^5.1.0"
   }

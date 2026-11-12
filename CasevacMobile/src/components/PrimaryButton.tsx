@@ -7,7 +7,7 @@ import {
   Text,
   ViewStyle,
 } from 'react-native';
-import { colors, radius, spacing } from '../theme/tokens';
+import { colors, radius, spacing, layout, typography } from '../theme/tokens';
 
 interface PrimaryButtonProps {
   title: string;
@@ -54,9 +54,9 @@ export function PrimaryButton({
 
 const styles = StyleSheet.create({
   base: {
-    minHeight: 52,
-    paddingHorizontal: spacing.lg,
-    borderRadius: radius.sm,
+    minHeight: layout.buttonHeight,
+    paddingHorizontal: spacing.xl,
+    borderRadius: radius.md,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -68,9 +68,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryDisabled,
   },
   label: {
+    ...typography.button,
     color: colors.onPrimary,
-    fontSize: 16,
-    fontWeight: '500',
     letterSpacing: 0.3,
   },
 });

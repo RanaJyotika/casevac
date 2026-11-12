@@ -11,6 +11,23 @@ export function formatTime(iso: string): string {
   return `${hh}:${mm}`;
 }
 
+const MONTHS = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
+/** Formats an ISO timestamp as "12 Nov 2026, 14:05" in local device time. */
+export function formatDateTime(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return 'Unknown time';
+  }
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${day} ${MONTHS[date.getMonth()]} ${date.getFullYear()}, ${formatTime(
+    iso,
+  )}`;
+}
+
 export type StatusTone = 'neutral' | 'success' | 'warning' | 'error';
 
 /**

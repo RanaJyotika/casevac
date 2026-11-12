@@ -1,0 +1,14 @@
+# ninja log v5
+2	79	0	D:/VedicVaibhav/Casevac/casevac/android/app/.cxx/Debug/4f4b412o/arm64-v8a/CMakeFiles/cmake.verify_globs	a7a27b53e5083ccf
+57	5803	8161636163517678	safeareacontext_autolinked_build/CMakeFiles/react_codegen_safeareacontext.dir/340844efa75273999c9aa9090cfbdad6/jni/react/renderer/components/safeareacontext/States.cpp.o	34f14b2959baa0f4
+35	6673	8161636172204706	safeareacontext_autolinked_build/CMakeFiles/react_codegen_safeareacontext.dir/c9212b0d453b23fe05fa5c98510dd439/react/renderer/components/safeareacontext/EventEmitters.cpp.o	429eae09c0918bbd
+87	6810	8161636173579760	safeareacontext_autolinked_build/CMakeFiles/react_codegen_safeareacontext.dir/9d688ab84f8492171938041c60787bdd/generated/source/codegen/jni/safeareacontext-generated.cpp.o	7edaae4a168edb0e
+1	6817	8161636173629783	CMakeFiles/appmodules.dir/OnLoad.cpp.o	51467559392e96f2
+18	9585	8161636201334026	safeareacontext_autolinked_build/CMakeFiles/react_codegen_safeareacontext.dir/89f124b07dc29509b03f2aa40bae1672/renderer/components/safeareacontext/RNCSafeAreaViewState.cpp.o	41e205aeb27e7c3b
+76	9677	8161636202259108	safeareacontext_autolinked_build/CMakeFiles/react_codegen_safeareacontext.dir/340844efa75273999c9aa9090cfbdad6/jni/react/renderer/components/safeareacontext/ShadowNodes.cpp.o	2d086d02a0cdb5ab
+43	9909	8161636204419092	safeareacontext_autolinked_build/CMakeFiles/react_codegen_safeareacontext.dir/340844efa75273999c9aa9090cfbdad6/jni/react/renderer/components/safeareacontext/Props.cpp.o	38233998a64de610
+27	10213	8161636207439396	safeareacontext_autolinked_build/CMakeFiles/react_codegen_safeareacontext.dir/ebe17fec3b48c79fc15d09fef967e4ab/renderer/components/safeareacontext/ComponentDescriptors.cpp.o	e132b0373a8e84bb
+6	10638	8161636211759734	CMakeFiles/appmodules.dir/D_/VedicVaibhav/Casevac/casevac/android/app/build/generated/autolinking/src/main/jni/autolinking.cpp.o	3bdee9fd629077a5
+11	10699	8161636212464885	safeareacontext_autolinked_build/CMakeFiles/react_codegen_safeareacontext.dir/14cc0fb156cf23c2e9e9d06e9f4f7932/components/safeareacontext/RNCSafeAreaViewShadowNode.cpp.o	42b502cc63f2acf5
+10700	10825	8161636213751223	D:/VedicVaibhav/Casevac/casevac/android/app/build/intermediates/cxx/Debug/4f4b412o/obj/arm64-v8a/libreact_codegen_safeareacontext.so	6e42e701e32950a9
+10826	10891	8161636214463513	D:/VedicVaibhav/Casevac/casevac/android/app/build/intermediates/cxx/Debug/4f4b412o/obj/arm64-v8a/libappmodules.so	3530d06d08b965a4

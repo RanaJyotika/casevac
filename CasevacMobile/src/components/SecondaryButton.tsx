@@ -7,7 +7,14 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
-import { colors, radius, spacing, touchTarget } from '../theme/tokens';
+import {
+  colors,
+  radius,
+  spacing,
+  touchTarget,
+  layout,
+  typography,
+} from '../theme/tokens';
 
 interface SecondaryButtonProps {
   title: string;
@@ -53,12 +60,12 @@ export function SecondaryButton({
 
 const styles = StyleSheet.create({
   base: {
-    minHeight: 56,
+    minHeight: layout.buttonHeight,
     minWidth: touchTarget,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderStrong,
     backgroundColor: colors.background,
     flexDirection: 'row',
     alignItems: 'center',
@@ -76,8 +83,7 @@ const styles = StyleSheet.create({
   },
   label: {
     flexShrink: 1,
+    ...typography.button,
     color: colors.textPrimary,
-    fontSize: 14,
-    fontWeight: '500',
   },
 });

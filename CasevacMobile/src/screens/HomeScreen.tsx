@@ -1,348 +1,338 @@
 /**
- * M02 — Home (CASEVAC_DOCS/SCREEN_SPECIFICATIONS.md)
- * Quickly begin casualty documentation or resume active work.
- * Screens beyond Home are not built yet; their entry points say so honestly.
+ * M02 — Home: command dashboard (SCREEN_SPECIFICATIONS.md, UI_DESIGN_GUIDELINES.md §5).
+ *
+ *   Quick actions  — Scan Patient QR · Enter Patient ID · Temporary Evacuation
+ *   Summary cards  — Total, RED, YELLOW, GREEN, BLACK, Active, Pending handover, Completed
+ *   Charts         — casualties by company (stacked) · by triage category
+ *   Activity       — recent casualty table · evacuation flow
+ *
+ * Figures come from the DEMO dataset until evacuation records are stored on
+ * the tablet; the screen says so. Nothing is labelled as live or force-wide.
  */
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
-  Pressable,
-  ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  AppHeader,
-  Chevron,
+  AppShell,
+  ChartCard,
+  CompanyStackedBarChart,
+  EvacuationFlow,
   GlyphIcon,
-  ListRow,
+  ManualPatientIdDialog,
   QrIcon,
-  SecondaryButton,
-  SectionPanel,
+  QuickActionTile,
+  RecentActivityTable,
   StatusBadge,
+  SummaryCard,
+  TriageBarChart,
+  TriageLegend,
+  type NavKey,
 } from '../components';
-import {
-  MOCK_ACTIVE_EVACUATIONS,
-  MOCK_CACHED_IDENTITY_COUNT,
-  MOCK_CONNECTIVITY,
-} from '../data/mockData';
-import {
-  colors,
-  fonts,
-  radius,
-  spacing,
-  touchTarget,
-  typography,
-} from '../theme/tokens';
+import { loadDashboardData, type DashboardData } from '../data/demoCasualties';
+import { computeDashboardStats } from '../services/dashboard/dashboardStats';
+import { getBundledIdentityDirectory } from '../services/identity/bundledDemoProvisioning';
+import type { ManualIdentification } from '../services/identity/manualLookup';
+import type { IdentityDirectory } from '../services/identity/types';
+import { colors, layout, spacing, typography } from '../theme/tokens';
 import type { Clinician } from '../types';
-import { formatTime, RECORD_STATUS_DISPLAY } from '../utils/format';
+import { formatTime } from '../utils/format';
 
 interface HomeScreenProps {
   clinician: Clinician;
+  onScanPatient: () => void;
+  onPatientIdentified: (result: ManualIdentification) => void;
   onSignOut: () => void;
+  /** Injected in tests; defaults to the bundled demo directory. */
+  directory?: IdentityDirectory;
 }
 
-function showComingLater(feature: string, screenId: string) {
-  Alert.alert(
-    `${feature} — coming later`,
-    `Screen ${screenId} is not built yet in this demo build. No data has been changed.`,
+export function HomeScreen({
+  clinician,
+  onScanPatient,
+  onPatientIdentified,
+  onSignOut,
+  directory,
+}: HomeScreenProps) {
+  const { width } = useWindowDimensions();
+  const navWidth =
+    width < layout.navCollapseBelow
+      ? layout.sidebarCompactWidth
+      : layout.sidebarWidth;
+  const contentWidth = width - navWidth - layout.contentPadding * 2;
+  const cardsInOneRow = contentWidth >= 900;
+  const sideBySide = contentWidth >= 720;
+
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [manualOpen, setManualOpen] = useState(false);
+  const identityDirectory = useMemo(
+    () => directory ?? getBundledIdentityDirectory(),
+    [directory],
   );
-}
 
-export function HomeScreen({ clinician, onSignOut }: HomeScreenProps) {
-  const evacuations = MOCK_ACTIVE_EVACUATIONS;
-  const pendingCount = evacuations.filter(
-    e => e.status === 'DIGITAL_TRANSFER_PENDING',
-  ).length;
+  useEffect(() => {
+    let cancelled = false;
+    loadDashboardData().then(result => {
+      if (!cancelled) {
+        setData(result);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  const confirmSignOut = () => {
+  const stats = useMemo(
+    () => (data ? computeDashboardStats(data.casualties, 5) : null),
+    [data],
+  );
+
+  const confirmLogout = () => {
     Alert.alert(
-      'Sign out?',
-      'Records saved on this phone remain available after you sign in again.',
+      'Log out?',
+      'Records saved on this tablet remain available after you sign in again.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Sign out', style: 'destructive', onPress: onSignOut },
+        { text: 'Log out', style: 'destructive', onPress: onSignOut },
       ],
     );
   };
 
+  const startTemporaryEvacuation = () => {
+    setManualOpen(false);
+    Alert.alert(
+      'Temporary evacuation — coming next',
+      'For a casualty with no wristband, or whose ID is destroyed or unreadable. It will create a temporary casualty ID and start the evacuation immediately; an authorised user can link it to the real identity later.\n\nIt needs evacuation storage on this tablet, which is built in the next phase. No data has been changed.',
+    );
+  };
+
+  const navigate = (key: NavKey) => {
+    if (key === 'scan') {
+      onScanPatient();
+    }
+  };
+
+  const dataNote = data
+    ? `${
+        data.source === 'DEMO' ? 'Demo data — fictional' : 'On this tablet'
+      } · updated ${formatTime(data.loadedAt)}`
+    : 'Loading…';
+
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-      <AppHeader
-        eyebrow="CASEVAC"
-        title="Medic Dashboard"
-        right={
-          <StatusBadge
-            label={MOCK_CONNECTIVITY === 'offline' ? 'Offline' : 'Online'}
-          />
-        }
-      >
-        <View style={styles.clinicianRow}>
-          <View style={styles.clinicianText}>
-            <Text style={styles.clinicianName} numberOfLines={1}>
-              {clinician.rank} {clinician.displayName} · {clinician.team}
-            </Text>
-            <Text style={styles.clinicianId} numberOfLines={1}>
-              {clinician.id}
-              {clinician.isDemo ? ' · Demo mode' : ''}
-            </Text>
-          </View>
-          <Pressable
-            onPress={confirmSignOut}
-            accessibilityRole="button"
-            accessibilityLabel="Sign out"
-            hitSlop={8}
-            style={({ pressed }) => [
-              styles.signOut,
-              pressed && styles.signOutPressed,
-            ]}
-          >
-            <Text style={styles.signOutText}>Sign out</Text>
-          </Pressable>
-        </View>
-      </AppHeader>
-
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
-      >
-        {/* Primary action */}
-        <View style={styles.actions}>
-          <Pressable
-            onPress={() => showComingLater('Scan Patient QR', 'M03')}
-            accessibilityRole="button"
-            accessibilityLabel="Scan Patient QR"
-            accessibilityHint="Identify an enrolled casualty"
-            style={({ pressed }) => [
-              styles.scanButton,
-              pressed && styles.scanButtonPressed,
-            ]}
-          >
-            <View style={styles.scanIcon}>
-              <QrIcon />
-            </View>
-            <View style={styles.scanText}>
-              <Text style={styles.scanTitle}>Scan Patient QR</Text>
-              <Text style={styles.scanSubtitle}>
-                Identify an enrolled casualty
-              </Text>
-            </View>
-            <Chevron color={colors.onPrimary} />
-          </Pressable>
-
-          <View style={styles.secondaryRow}>
-            <SecondaryButton
-              title="Enter Patient ID"
-              icon={<GlyphIcon glyph="#" />}
-              onPress={() => showComingLater('Manual Patient ID', 'M03')}
-              style={styles.secondaryButton}
-            />
-            <SecondaryButton
-              title="Unknown Casualty"
-              icon={<GlyphIcon glyph="+" />}
-              onPress={() => showComingLater('Unknown Casualty', 'M05')}
-              style={styles.secondaryButton}
-            />
-          </View>
-        </View>
-
-        {/* Active evacuations */}
-        <SectionPanel
-          title="Active evacuations"
-          meta={`${evacuations.length} on this phone`}
-        >
-          {evacuations.length === 0 ? (
-            <View style={styles.empty}>
-              <Text style={styles.emptyText}>No active evacuations.</Text>
-            </View>
-          ) : (
-            evacuations.map((evac, index) => {
-              const status = RECORD_STATUS_DISPLAY[evac.status];
-              const patientLabel = evac.isUnknownCasualty
-                ? `${evac.patientId} (unknown)`
-                : evac.patientId;
-              const subtitle = `${patientLabel} · Started ${formatTime(
-                evac.startedAt,
-              )} · ${evac.eventCount} events`;
-              return (
-                <ListRow
-                  key={evac.evacuationId}
-                  title={evac.evacuationId}
-                  monoTitle
-                  subtitle={subtitle}
-                  badge={<StatusBadge label={status.label} tone={status.tone} />}
-                  onPress={() => showComingLater('Clinical Timeline', 'M12')}
-                  isLast={index === evacuations.length - 1}
-                  accessibilityLabel={`${evac.evacuationId}, ${subtitle}, status ${status.label}`}
-                  accessibilityHint="Opens the clinical timeline"
-                />
-              );
-            })
-          )}
-        </SectionPanel>
-
-        {/* Records */}
-        <SectionPanel title="Records">
-          <ListRow
-            title="Local Patient Records"
-            subtitle={`${MOCK_CACHED_IDENTITY_COUNT} identities available offline`}
-            leading={<GlyphIcon glyph="≡" />}
-            onPress={() => showComingLater('Local Patient Records', 'M04')}
-          />
-          <ListRow
-            title="Pending Transfer / Sync"
-            subtitle={
-              pendingCount === 1
-                ? '1 incident awaiting digital transfer'
-                : `${pendingCount} incidents awaiting digital transfer`
-            }
-            leading={<GlyphIcon glyph="↻" />}
-            trailing={
-              pendingCount > 0 ? (
-                <View style={styles.countBadge}>
-                  <Text style={styles.countText}>{pendingCount}</Text>
-                </View>
-              ) : null
-            }
-            onPress={() => showComingLater('Pending Transfer / Sync', 'M17')}
-            isLast
-          />
-        </SectionPanel>
-      </ScrollView>
-
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          Demo mode · fictional data only · not connected to a server
-        </Text>
+    <AppShell
+      title="Home"
+      clinician={clinician}
+      active="home"
+      onNavigate={navigate}
+      onLogout={confirmLogout}
+    >
+      {/* Quick actions */}
+      <View style={styles.row}>
+        <QuickActionTile
+          variant="primary"
+          title="Scan Patient QR"
+          subtitle="Read the casualty's wristband"
+          icon={<QrIcon />}
+          onPress={onScanPatient}
+        />
+        <QuickActionTile
+          title="Enter Patient ID"
+          subtitle="Wristband damaged or unreadable"
+          icon={<GlyphIcon glyph="#" />}
+          onPress={() => setManualOpen(true)}
+        />
+        <QuickActionTile
+          title="Temporary Evacuation"
+          subtitle="No ID — anonymous record"
+          icon={<GlyphIcon glyph="+" />}
+          onPress={startTemporaryEvacuation}
+        />
       </View>
-    </SafeAreaView>
+
+      {/* Overview header */}
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle} accessibilityRole="header">
+          CASUALTY OVERVIEW
+        </Text>
+        <View style={styles.sectionMeta}>
+          {data?.source === 'DEMO' ? (
+            <StatusBadge label="Demo data" tone="warning" />
+          ) : null}
+          <Text style={styles.metaText}>{dataNote}</Text>
+        </View>
+      </View>
+
+      {stats ? (
+        <>
+          {/* Summary cards */}
+          <View style={[styles.cards, !cardsInOneRow && styles.cardsWrap]}>
+            {[
+              <SummaryCard
+                key="total"
+                label="Total casualties"
+                value={stats.total}
+              />,
+              <SummaryCard
+                key="red"
+                label="Critical"
+                category="RED"
+                value={stats.byTriage.RED}
+              />,
+              <SummaryCard
+                key="yellow"
+                label="Moderate"
+                category="YELLOW"
+                value={stats.byTriage.YELLOW}
+              />,
+              <SummaryCard
+                key="green"
+                label="Stable"
+                category="GREEN"
+                value={stats.byTriage.GREEN}
+              />,
+              <SummaryCard
+                key="black"
+                label="Deceased"
+                category="BLACK"
+                value={stats.byTriage.BLACK}
+              />,
+              <SummaryCard
+                key="active"
+                label="Active evacuations"
+                value={stats.activeEvacuations}
+              />,
+              <SummaryCard
+                key="pending"
+                label="Pending handover"
+                value={stats.pendingHandover}
+              />,
+              <SummaryCard
+                key="done"
+                label="Completed"
+                value={stats.completedEvacuations}
+              />,
+            ].map(card => (
+              <View
+                key={card.key}
+                style={cardsInOneRow ? styles.cardCellRow : styles.cardCellWrap}
+              >
+                {card}
+              </View>
+            ))}
+          </View>
+
+          {/* Charts */}
+          <View style={[styles.row, !sideBySide && styles.stack]}>
+            <ChartCard
+              title="Casualties by company"
+              headerRight={<TriageLegend />}
+              style={sideBySide ? styles.wide : undefined}
+            >
+              <CompanyStackedBarChart data={stats.byCompany} />
+            </ChartCard>
+            <ChartCard
+              title="Casualties by category"
+              meta={`${stats.total} total`}
+              style={sideBySide ? styles.narrow : undefined}
+            >
+              <TriageBarChart counts={stats.byTriage} />
+            </ChartCard>
+          </View>
+
+          {/* Activity and flow */}
+          <View style={[styles.row, !sideBySide && styles.stack]}>
+            <ChartCard
+              title="Recent casualty activity"
+              meta="Latest updates first"
+              style={sideBySide ? styles.wide : undefined}
+            >
+              <RecentActivityTable rows={stats.recent} />
+            </ChartCard>
+            <ChartCard
+              title="Evacuation status"
+              meta="Provisional stages"
+              style={sideBySide ? styles.narrow : undefined}
+            >
+              <EvacuationFlow byStage={stats.byStage} />
+              <Text style={styles.flowNote}>
+                Stage counts are operational status, not proof of digital record
+                transfer.
+              </Text>
+            </ChartCard>
+          </View>
+        </>
+      ) : (
+        <Text style={styles.metaText}>Loading dashboard…</Text>
+      )}
+
+      <ManualPatientIdDialog
+        visible={manualOpen}
+        directory={identityDirectory}
+        onCancel={() => setManualOpen(false)}
+        onFound={result => {
+          setManualOpen(false);
+          onPatientIdentified(result);
+        }}
+        onStartTemporary={startTemporaryEvacuation}
+      />
+    </AppShell>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.background,
+  row: {
+    flexDirection: 'row',
+    gap: layout.gutter,
   },
-  clinicianRow: {
+  stack: {
+    flexDirection: 'column',
+  },
+  wide: {
+    flex: 3,
+  },
+  narrow: {
+    flex: 2,
+  },
+  sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: spacing.md,
+    marginTop: spacing.xs,
   },
-  clinicianText: {
-    flex: 1,
-    minWidth: 0,
-    gap: 1,
+  sectionTitle: {
+    ...typography.sectionTitle,
+    color: colors.textMuted,
   },
-  clinicianName: {
-    ...typography.label,
-    color: colors.textPrimary,
-  },
-  clinicianId: {
-    ...typography.helper,
-    fontFamily: fonts.mono,
-    color: colors.textSecondary,
-  },
-  signOut: {
-    minHeight: touchTarget,
-    justifyContent: 'center',
-    paddingHorizontal: spacing.sm,
-    borderRadius: radius.sm,
-  },
-  signOutPressed: {
-    backgroundColor: colors.surface,
-  },
-  signOutText: {
-    ...typography.label,
-    color: colors.primary,
-  },
-  scroll: {
-    flex: 1,
-    backgroundColor: colors.surface,
-  },
-  content: {
-    padding: spacing.lg,
-    gap: 20,
-  },
-  actions: {
-    gap: 10,
-  },
-  scanButton: {
-    minHeight: 88,
-    padding: spacing.lg,
-    borderRadius: radius.md,
-    backgroundColor: colors.primary,
+  sectionMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: spacing.sm,
   },
-  scanButtonPressed: {
-    backgroundColor: colors.primaryPressed,
-  },
-  scanIcon: {
-    width: 48,
-    height: 48,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.55)',
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scanText: {
-    flex: 1,
-    gap: 3,
-  },
-  scanTitle: {
-    fontSize: 18,
-    lineHeight: 22,
-    fontWeight: '700',
-    color: colors.onPrimary,
-  },
-  scanSubtitle: {
-    ...typography.caption,
-    color: colors.onPrimaryMuted,
-  },
-  secondaryRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  secondaryButton: {
-    flex: 1,
-  },
-  empty: {
-    padding: spacing.lg,
-  },
-  emptyText: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-  },
-  countBadge: {
-    minWidth: 24,
-    height: 24,
-    paddingHorizontal: 6,
-    borderRadius: 12,
-    backgroundColor: colors.warningStrong,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  countText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.onPrimary,
-  },
-  footer: {
-    paddingHorizontal: 20,
-    paddingVertical: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.background,
-  },
-  footerText: {
+  metaText: {
     ...typography.helper,
     color: colors.textSecondary,
-    textAlign: 'center',
+  },
+  cards: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  cardsWrap: {
+    flexWrap: 'wrap',
+  },
+  cardCellRow: {
+    flex: 1,
+  },
+  cardCellWrap: {
+    flexBasis: '23%',
+    flexGrow: 1,
+  },
+  flowNote: {
+    ...typography.helper,
+    color: colors.textSecondary,
   },
 });
