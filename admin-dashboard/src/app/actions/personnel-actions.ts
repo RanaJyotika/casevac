@@ -42,6 +42,8 @@ const STAFF_FIELDS = [
   "contactPhone",
   "status",
   "teamId",
+  "photo",
+  "dateOfBirth",
 ] as const;
 
 export async function registerSoldierAction(_prev: ActionState, formData: FormData): Promise<ActionState> {

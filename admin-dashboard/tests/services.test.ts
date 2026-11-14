@@ -288,9 +288,35 @@ describe("dashboard data", () => {
     expect(directory.credentials.find(c => c.patientId === soldier.id)?.status).toBe("REVOKED");
     expect(JSON.stringify(directory)).not.toContain("nextOfKin");
     expect(JSON.stringify(directory)).not.toContain("serviceNumber");
+    // Clinical staff a casualty can be handed over to: medical officer first.
+    expect(directory.staff).toHaveLength(3);
+    expect(directory.staff[0].role).toBe("MEDICAL_OFFICER");
+    expect(directory.staff[0].roleLabel).toBe("Doctor / Medical Officer");
+    expect(JSON.stringify(directory.staff)).not.toContain("passwordHash");
 
     unwrap(await resetDemoData(actor));
     expect((await getDashboardSummary()).isEmpty).toBe(true);
+  });
+
+  it("stores a staff date of birth and sends it with the handover staff list", async () => {
+    const mo = unwrap(
+      await registerStaff(
+        { fullName: "Meera Iyer", serviceNumber: "DEMO-D-77", rank: "Maj", unit: "Demo ADS", role: "MEDICAL_OFFICER", designation: "RMO", dateOfBirth: "1988-03-14" },
+        actor,
+      ),
+    );
+    expect(mo.staff.dateOfBirth).toBe("1988-03-14");
+    const bad = await registerStaff(
+      { fullName: "Future Born", serviceNumber: "DEMO-D-78", rank: "Capt", unit: "Demo ADS", role: "MEDICAL_OFFICER", designation: "RMO", dateOfBirth: "2999-01-01" },
+      actor,
+    );
+    expect(bad.ok).toBe(false);
+    // Admin roles are not clinical: never offered as a handover recipient.
+    unwrap(await registerStaff({ fullName: "Office Admin", serviceNumber: "DEMO-A-77", rank: "Capt", unit: "HQ", role: "ADMIN_OFFICER" }, actor));
+
+    const directory = await buildIdentityDirectory();
+    expect(directory.staff.map(s => s.fullName)).toEqual(["Meera Iyer"]);
+    expect(directory.staff[0]).toMatchObject({ rank: "Maj", unit: "Demo ADS", designation: "RMO", dateOfBirth: "1988-03-14", photo: null });
   });
 
   it("filters the directory by search, category, role and status", async () => {

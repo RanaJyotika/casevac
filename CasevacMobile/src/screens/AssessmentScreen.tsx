@@ -1,7 +1,8 @@
 /**
- * M06 — Initial Casualty Assessment (screen 4).
+ * M06 — Initial Casualty Assessment (client screens 4 + 5, combined).
  *
- * Opens from Start Evacuation on Patient Identification. First question:
+ * Opens from Start Evacuation on Patient Identification. Save & Continue
+ * opens Interventions & Triage (client screens 6 + 7). First question:
  *   "Is the casualty conscious and able to provide details?"  Yes / No
  * Answering opens the assessment, in collapsible sections:
  *   A Incident details · B MARCH assessment · C Vitals · D Additional information
@@ -20,16 +21,18 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { APP_BRAND } from '../brand';
+import { useDraftState } from '../services/navigation/drafts';
 import {
   AppHeader,
   FormField,
   Icon,
   Notice,
-  PillToggle,
   PrimaryButton,
   SecondaryButton,
   TriagePill,
 } from '../components';
+import { FormSection } from '../components/formParts';
 import { DateField, TimeField } from '../components/pickers';
 import {
   EMPTY_ASSESSMENT,
@@ -40,7 +43,9 @@ import {
   type AssessmentErrors,
   type AssessmentForm,
   type AssessmentStore,
+  type InitialAssessment,
   type MarchKey,
+  type Mechanism,
   type SystemicExam,
 } from '../services/evacuation/assessment';
 import type { BloodGroup, RhFactor } from '../services/identity/types';
@@ -69,12 +74,20 @@ interface AssessmentScreenProps {
   patient: AssessmentPatient;
   recordedBy: string;
   onCancel: () => void;
-  onSaved: () => void;
+  /** Called with the saved record; the flow continues to interventions. */
+  onSaved: (record: InitialAssessment) => void;
   /** Injected in tests; defaults to this tablet's store. */
   store?: AssessmentStore;
+  /** Keeps unsaved input across tab switches and restarts (patient tabs). */
+  draftKey?: string;
 }
 
 type SectionKey = 'A' | 'B' | 'C' | 'D';
+
+/** "Name (ID)" as stored on the patient's records. */
+export function patientLabel(patient: AssessmentPatient): string {
+  return `${patient.name ?? 'Unidentified casualty'} (${patient.id})`;
+}
 
 const RH_SIGN: Record<RhFactor, string> = {
   UNKNOWN: '',
@@ -82,44 +95,20 @@ const RH_SIGN: Record<RhFactor, string> = {
   NEGATIVE: '−',
 };
 
-/* -------------------------------- Pieces -------------------------------- */
+const SE_OPTIONS: { value: SystemicExam; label: string; hint: string }[] = [
+  {
+    value: 'RECORDABLE',
+    label: 'Recordable',
+    hint: 'Record RS, CVS, P/A and CNS findings',
+  },
+  {
+    value: 'NOT_RECORDABLE',
+    label: 'Not recordable',
+    hint: 'Examination not possible now',
+  },
+];
 
-function Section({
-  letter,
-  title,
-  open,
-  onToggle,
-  children,
-}: {
-  letter: SectionKey;
-  title: string;
-  open: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <View style={styles.section}>
-      <Pressable
-        onPress={onToggle}
-        accessibilityRole="button"
-        accessibilityLabel={`${letter}. ${title}`}
-        accessibilityState={{ expanded: open }}
-        style={({ pressed }) => [styles.sectionHead, pressed && styles.pressed]}
-      >
-        <View style={styles.letter}>
-          <Text style={styles.letterText}>{letter}</Text>
-        </View>
-        <Text style={styles.sectionTitle} accessibilityRole="header">
-          {title}
-        </Text>
-        <View style={open ? styles.chevronOpen : undefined}>
-          <Icon name="chevronDown" size={22} color={colors.textSecondary} />
-        </View>
-      </Pressable>
-      {open ? <View style={styles.sectionBody}>{children}</View> : null}
-    </View>
-  );
-}
+/* -------------------------------- Pieces -------------------------------- */
 
 function Unit({ text }: { text: string }) {
   return <Text style={styles.unit}>{text}</Text>;
@@ -168,10 +157,14 @@ export function AssessmentScreen({
   onCancel,
   onSaved,
   store,
+  draftKey,
 }: AssessmentScreenProps) {
   const { width } = useWindowDimensions();
   const wide = width >= 900;
-  const [form, setForm] = useState<AssessmentForm>(EMPTY_ASSESSMENT);
+  const [form, setForm, clearDraft] = useDraftState<AssessmentForm>(
+    draftKey,
+    EMPTY_ASSESSMENT,
+  );
   const [errors, setErrors] = useState<AssessmentErrors>({});
   const [open, setOpen] = useState<Record<SectionKey, boolean>>({
     A: true,
@@ -196,6 +189,17 @@ export function AssessmentScreen({
       ...prev,
       march: { ...prev.march, [key]: !prev.march[key] },
     }));
+  const toggleMechanism = (option: Mechanism) => {
+    setForm(prev => ({
+      ...prev,
+      mechanisms: prev.mechanisms.includes(option)
+        ? prev.mechanisms.filter(m => m !== option)
+        : [...prev.mechanisms, option],
+    }));
+    if (option === 'Other' && errors.mechanismOther) {
+      setErrors(prev => ({ ...prev, mechanismOther: undefined }));
+    }
+  };
   const toggleSection = (key: SectionKey) =>
     setOpen(prev => ({ ...prev, [key]: !prev[key] }));
 
@@ -213,14 +217,13 @@ export function AssessmentScreen({
     setSaving(true);
     setSaveError(null);
     try {
-      await (store ?? getAssessmentStore()).save(result.value, {
+      const record = await (store ?? getAssessmentStore()).save(result.value, {
         patientKeys: patient.keys,
-        patientLabel: `${patient.name ?? 'Unidentified casualty'} (${
-          patient.id
-        })`,
+        patientLabel: patientLabel(patient),
         recordedBy,
       });
-      onSaved();
+      clearDraft();
+      onSaved(record);
     } catch {
       setSaveError(
         'The assessment could not be saved on this tablet. Try again.',
@@ -241,7 +244,7 @@ export function AssessmentScreen({
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <AppHeader
-        eyebrow="CASEVAC"
+        eyebrow={APP_BRAND}
         title="Initial Casualty Assessment"
         onBack={onCancel}
       />
@@ -316,7 +319,7 @@ export function AssessmentScreen({
             ) : null}
 
             {/* A — Incident details */}
-            <Section
+            <FormSection
               letter="A"
               title="Incident Details"
               open={open.A}
@@ -365,24 +368,30 @@ export function AssessmentScreen({
                 <Text style={styles.choiceLabel}>
                   3. Mechanism of injury (MOI)
                 </Text>
+                <Text style={styles.hint}>Select all that apply.</Text>
                 <View style={styles.wrap}>
                   {MOI_OPTIONS.map(option => {
-                    const selected = form.mechanism === option;
+                    const selected = form.mechanisms.includes(option);
                     return (
                       <Pressable
                         key={option}
-                        onPress={() =>
-                          set('mechanism', selected ? null : option)
-                        }
-                        accessibilityRole="radio"
+                        onPress={() => toggleMechanism(option)}
+                        accessibilityRole="checkbox"
                         accessibilityLabel={option}
-                        accessibilityState={{ selected }}
+                        accessibilityState={{ checked: selected }}
                         style={({ pressed }) => [
                           styles.option,
                           selected && styles.optionOn,
                           pressed && !selected && styles.pressed,
                         ]}
                       >
+                        {selected ? (
+                          <Icon
+                            name="check"
+                            size={16}
+                            color={colors.onPrimary}
+                          />
+                        ) : null}
                         <Text
                           style={[
                             styles.optionText,
@@ -395,7 +404,7 @@ export function AssessmentScreen({
                     );
                   })}
                 </View>
-                {form.mechanism === 'Other' ? (
+                {form.mechanisms.includes('Other') ? (
                   <FormField
                     label="Describe the mechanism"
                     value={form.mechanismOther}
@@ -435,10 +444,10 @@ export function AssessmentScreen({
                   })}
                 </View>
               </View>
-            </Section>
+            </FormSection>
 
             {/* B — MARCH */}
-            <Section
+            <FormSection
               letter="B"
               title="MARCH Assessment"
               open={open.B}
@@ -465,10 +474,10 @@ export function AssessmentScreen({
                 multiline
                 maxLength={500}
               />
-            </Section>
+            </FormSection>
 
             {/* C — Vitals */}
-            <Section
+            <FormSection
               letter="C"
               title="Vitals"
               open={open.C}
@@ -559,17 +568,51 @@ export function AssessmentScreen({
                 <Text style={styles.choiceLabel}>
                   6. S/E (systemic examination)
                 </Text>
-                <PillToggle<SystemicExam>
-                  label="Systemic examination"
-                  value={form.systemicExam ?? ('' as SystemicExam)}
-                  onChange={v => set('systemicExam', v)}
-                  options={[
-                    { value: 'RECORDABLE', label: 'Recordable' },
-                    { value: 'NOT_RECORDABLE', label: 'Not recordable' },
-                  ]}
-                />
+                <View
+                  style={styles.seRow}
+                  accessibilityRole="radiogroup"
+                  accessibilityLabel="Systemic examination"
+                >
+                  {SE_OPTIONS.map(option => {
+                    const selected = form.systemicExam === option.value;
+                    return (
+                      <Pressable
+                        key={option.value}
+                        onPress={() =>
+                          set('systemicExam', selected ? null : option.value)
+                        }
+                        accessibilityRole="radio"
+                        accessibilityLabel={option.label}
+                        accessibilityHint={option.hint}
+                        accessibilityState={{ selected }}
+                        style={({ pressed }) => [
+                          styles.seOption,
+                          selected && styles.seOptionOn,
+                          pressed && !selected && styles.pressed,
+                        ]}
+                      >
+                        <View
+                          style={[styles.radio, selected && styles.radioOn]}
+                        >
+                          {selected ? <View style={styles.radioDot} /> : null}
+                        </View>
+                        <View style={styles.flex}>
+                          <Text
+                            style={[
+                              styles.seLabel,
+                              selected && styles.seLabelOn,
+                            ]}
+                          >
+                            {option.label}
+                          </Text>
+                          <Text style={styles.seHint}>{option.hint}</Text>
+                        </View>
+                      </Pressable>
+                    );
+                  })}
+                </View>
                 {form.systemicExam === 'RECORDABLE' ? (
-                  <View style={styles.grid}>
+                  <View style={[styles.grid, styles.findings]}>
                     {(
                       [
                         ['rs', 'RS (respiratory)'],
@@ -591,10 +634,10 @@ export function AssessmentScreen({
                   </View>
                 ) : null}
               </View>
-            </Section>
+            </FormSection>
 
             {/* D — Additional information */}
-            <Section
+            <FormSection
               letter="D"
               title="Additional Information"
               open={open.D}
@@ -608,7 +651,7 @@ export function AssessmentScreen({
                 multiline
                 maxLength={1000}
               />
-            </Section>
+            </FormSection>
 
             {errorCount ? (
               <Notice
@@ -626,10 +669,10 @@ export function AssessmentScreen({
             <View style={[styles.actions, wide && styles.actionsWide]}>
               <View style={wide ? styles.actionMain : undefined}>
                 <PrimaryButton
-                  title="Save Assessment"
+                  title="Save & Continue"
                   onPress={save}
                   loading={saving}
-                  accessibilityHint="Saves on this tablet and adds it to the patient's history"
+                  accessibilityHint="Saves the assessment on this tablet and opens Interventions and Triage"
                 />
               </View>
               <View style={wide ? styles.actionSide : undefined}>
@@ -712,45 +755,6 @@ const styles = StyleSheet.create({
 
   heading: { ...typography.sectionTitle, color: colors.textMuted },
 
-  section: {
-    borderRadius: radius.lg + 4,
-    borderWidth: layout.borderWidth,
-    borderColor: colors.divider,
-    backgroundColor: colors.background,
-    overflow: 'hidden',
-  },
-  sectionHead: {
-    minHeight: 60,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingHorizontal: spacing.lg,
-  },
-  letter: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary,
-  },
-  letterText: { fontSize: 16, fontWeight: '800', color: colors.onPrimary },
-  sectionTitle: {
-    flex: 1,
-    fontSize: 18,
-    lineHeight: 24,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  chevronOpen: { transform: [{ rotate: '180deg' }] },
-  sectionBody: {
-    gap: spacing.lg,
-    padding: spacing.lg,
-    paddingTop: spacing.sm,
-    borderTopWidth: layout.borderWidth,
-    borderTopColor: colors.divider,
-  },
-
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.lg },
   half: { flexBasis: '45%', flexGrow: 1, minWidth: 0 },
   third: { flexBasis: '30%', flexGrow: 1, minWidth: 0 },
@@ -760,7 +764,9 @@ const styles = StyleSheet.create({
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   option: {
     minHeight: 48,
-    justifyContent: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     paddingHorizontal: spacing.lg,
     borderRadius: radius.pill,
     borderWidth: 1.5,
@@ -781,6 +787,54 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     borderWidth: 3,
     borderColor: 'transparent',
+  },
+
+  seRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
+  seOption: {
+    flexBasis: '45%',
+    flexGrow: 1,
+    minHeight: 64,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 2,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.background,
+  },
+  seOptionOn: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primarySurface,
+  },
+  radio: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 2,
+    borderColor: colors.borderStrong,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.background,
+  },
+  radioOn: { borderColor: colors.primary },
+  radioDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: colors.primary,
+  },
+  seLabel: { fontSize: 17, fontWeight: '700', color: colors.textPrimary },
+  seLabelOn: { color: colors.primary },
+  seHint: { ...typography.caption, color: colors.textSecondary },
+  findings: {
+    marginTop: spacing.xs,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.primary,
+    backgroundColor: '#F7F9FC',
   },
 
   hint: { ...typography.helper, color: colors.textSecondary },

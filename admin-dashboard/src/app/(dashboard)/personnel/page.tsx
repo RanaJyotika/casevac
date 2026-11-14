@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { ExternalLink, Pencil, Search } from "lucide-react";
+import { loadPersonProfileView, PersonProfileDetails, PersonProfileSummary } from "@/components/personnel/person-profile";
 import { Badge, CredentialStatusBadge, MobileLoginStatusBadge, RecordStatusBadge } from "@/components/ui/badge";
 import { buttonClasses, LinkButton } from "@/components/ui/button";
 import { EmptyState, PageHeader, Panel, Table, Td, Th } from "@/components/ui/layout";
+import { RouteModal } from "@/components/ui/route-modal";
 import { CATEGORY_LABELS, ROLE_DEFINITIONS, ROLE_IDS, isRoleId } from "@/lib/domain/roles";
 import type { PersonCategory, RecordStatus } from "@/lib/domain/types";
 import { formatDate, param } from "@/lib/format";
@@ -25,12 +27,24 @@ export default async function PersonnelPage({ searchParams }: PageProps<"/person
   const statusRaw = param(sp.status);
   const status = (statusRaw === "ACTIVE" || statusRaw === "INACTIVE" ? statusRaw : "") as RecordStatus | "";
   const filtered = Boolean(q || category || role || unit || status);
+  const profileId = param(sp.profile);
 
-  const [rows, units, mobileAccounts] = await Promise.all([
+  const [rows, units, mobileAccounts, profileView] = await Promise.all([
     listPersonnel({ q, category, role, unit, status }),
     listUnits(),
     listLiveMobileAccounts(),
+    profileId ? loadPersonProfileView(profileId) : null,
   ]);
+
+  /** Directory URL with the current filters kept, optionally opening a profile modal. */
+  const directoryHref = (profile?: string) => {
+    const qs = new URLSearchParams();
+    for (const [key, value] of Object.entries({ q, category, role, unit, status, profile })) {
+      if (value) qs.set(key, value);
+    }
+    const query = qs.toString();
+    return query ? `/personnel?${query}` : "/personnel";
+  };
 
   return (
     <>
@@ -131,12 +145,12 @@ export default async function PersonnelPage({ searchParams }: PageProps<"/person
               {rows.map(({ person, activeCredential, teams }) => (
                 <tr key={person.id} className="hover:bg-canvas">
                   <Td className="font-mono text-[13px]">
-                    <Link href={`/personnel/${person.id}`} className="text-brand hover:underline">
+                    <Link href={directoryHref(person.id)} scroll={false} className="text-brand hover:underline">
                       {person.displayId}
                     </Link>
                   </Td>
                   <Td>
-                    <Link href={`/personnel/${person.id}`} className="font-medium hover:underline">
+                    <Link href={directoryHref(person.id)} scroll={false} className="font-medium hover:underline">
                       {person.fullName}
                     </Link>
                     <div className="text-xs text-muted">{person.rank}</div>
@@ -174,6 +188,33 @@ export default async function PersonnelPage({ searchParams }: PageProps<"/person
           </Table>
         )}
       </Panel>
+
+      {profileId ? (
+        profileView ? (
+          <RouteModal
+            key={profileId}
+            closeHref={directoryHref()}
+            title={profileView.person.fullName}
+            description={<PersonProfileSummary person={profileView.person} />}
+            actions={
+              <>
+                <LinkButton href={`/personnel/${profileView.person.id}/edit`} variant="secondary" size="sm">
+                  <Pencil className="size-4" aria-hidden /> Edit details
+                </LinkButton>
+                <LinkButton href={`/personnel/${profileView.person.id}`} variant="secondary" size="sm">
+                  <ExternalLink className="size-4" aria-hidden /> Open full page
+                </LinkButton>
+              </>
+            }
+          >
+            <PersonProfileDetails view={profileView} />
+          </RouteModal>
+        ) : (
+          <RouteModal key={profileId} closeHref={directoryHref()} title="Profile not found">
+            <EmptyState title="This person no longer exists in the data source." />
+          </RouteModal>
+        )
+      ) : null}
     </>
   );
 }

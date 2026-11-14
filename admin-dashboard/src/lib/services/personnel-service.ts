@@ -103,6 +103,8 @@ export async function registerStaff(input: StaffInput, actor: Actor): Promise<Se
         role: data.role,
         designation: data.designation,
         professionalRegistration: data.professionalRegistration,
+        photo: data.photo,
+        dateOfBirth: data.dateOfBirth,
       },
     };
     await tx.insertPerson(person);
@@ -178,7 +180,13 @@ export async function updateStaff(id: string, input: StaffInput, actor: Actor): 
       unit: data.unit,
       contactPhone: data.contactPhone,
       status: data.status,
-      staff: { role: data.role, designation: data.designation, professionalRegistration: data.professionalRegistration },
+      staff: {
+        role: data.role,
+        designation: data.designation,
+        professionalRegistration: data.professionalRegistration,
+        photo: data.photo,
+        dateOfBirth: data.dateOfBirth,
+      },
       updatedAt: nowIso(),
     };
     await tx.updatePerson(updated);

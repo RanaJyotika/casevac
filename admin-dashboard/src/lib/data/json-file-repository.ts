@@ -9,6 +9,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import type {
+  AdminPasskey,
   AuditEvent,
   DatabaseSnapshot,
   IdentityCredential,
@@ -27,6 +28,7 @@ export function emptySnapshot(): DatabaseSnapshot {
     credentials: [],
     teams: [],
     mobileAccounts: [],
+    adminPasskeys: [],
     auditLog: [],
   };
 }
@@ -76,6 +78,9 @@ class SnapshotStore implements RepositoryWriter {
     const matches = this.db.mobileAccounts.filter(a => a.userId === key);
     const found = matches.find(a => a.status !== "REVOKED") ?? matches.at(-1);
     return found ? clone(found) : null;
+  }
+  async listAdminPasskeys(adminId: string) {
+    return clone(this.db.adminPasskeys.filter(k => k.adminId === adminId));
   }
   async listAuditEvents(limit: number) {
     return clone(this.db.auditLog.slice(-limit).reverse());
@@ -134,6 +139,15 @@ class SnapshotStore implements RepositoryWriter {
   }
   async updateMobileAccount(account: MobileLoginAccount) {
     replaceById(this.db.mobileAccounts, account, "mobile account");
+  }
+  async insertAdminPasskey(passkey: AdminPasskey) {
+    if (this.db.adminPasskeys.some(k => k.id === passkey.id)) {
+      throw new Error("Constraint violation: duplicate passkey id");
+    }
+    this.db.adminPasskeys.push(clone(passkey));
+  }
+  async updateAdminPasskey(passkey: AdminPasskey) {
+    replaceById(this.db.adminPasskeys, passkey, "passkey");
   }
   async appendAudit(event: AuditEvent) {
     this.db.auditLog.push(clone(event));
@@ -221,6 +235,7 @@ export class JsonFileRepository implements CasevacRepository {
   async getTeam(id: string) { return (await this.view()).getTeam(id); }
   async listMobileAccounts() { return (await this.view()).listMobileAccounts(); }
   async findMobileAccountByUserId(userId: string) { return (await this.view()).findMobileAccountByUserId(userId); }
+  async listAdminPasskeys(adminId: string) { return (await this.view()).listAdminPasskeys(adminId); }
   async listAuditEvents(limit: number) { return (await this.view()).listAuditEvents(limit); }
 
   async transaction<T>(work: (tx: RepositoryWriter) => Promise<T>): Promise<T> {

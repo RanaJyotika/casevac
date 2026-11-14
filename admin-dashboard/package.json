@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "issuer:keygen": "node scripts/generate-qr-issuer-key.mjs",
+    "transfer:keygen": "node scripts/generate-transfer-key.mjs",
     "mobile:provision": "tsx --env-file-if-exists=.env.local scripts/provision-mobile-demo.ts"
   },
   "dependencies": {

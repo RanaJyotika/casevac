@@ -29,13 +29,11 @@ Each screen is redrawn in landscape as below.
 | 1 | Medic Login / Home | M01, M02 | Login: left branding + instructions, right login box. Home: command dashboard |
 | 2 | Scan Patient QR | M03 | Left: scanner · Right: manual ID entry, quick actions, last scanned casualty |
 | 3 | Patient Details | M04 | Left: identity details · Right: previous medical history + action buttons |
-| 4 | Casualty Consciousness Decision | M04B | Two large side-by-side choice cards: Yes → M07, No → M05 temporary registration |
-| 5 | Initial Casualty Assessment | M07 (+ M09) | Two columns: left incident details + MARCH · right vitals + notes |
-| 6 | Initial Interventions | M11 | Grouped toggle sections: bleeding, airway, breathing, medication, remarks (two columns) |
-| 7 | Initial Casualty Condition | M07B | Large triage cards (RED / YELLOW / GREEN / BLACK with text) + provisional diagnosis + remarks |
-| 8 | Handover Details | M13 | Numbered grouped boxes: place/date/time, medical officer, next course of action |
-| 9 | Prepare Evacuation | M13B | Grouped boxes: date/time, assisting staff, condition during evacuation, mode of evacuation |
-| 10 | Evacuation Completed | M19 | Summary report: casualty, triage, interventions, timeline + next-action buttons |
+| 4 + 5 | Casualty Assessment (combined) | M04B + M07 (+ M09) | One screen: "conscious and able to give details?" Yes / No at the top, then collapsible A Incident details · B MARCH · C Vitals · D Additional information. **Save & Continue** → 6 + 7 |
+| 6 + 7 | Interventions & Triage (combined) | M11 + M07B | One screen: A Initial interventions (bleeding control + method + tourniquet time, airway, breathing, splinting, O₂, medication rows) · B Triage cards (1 RED / 2 YELLOW / 3 GREEN / 4 BLACK) pre-filled from the assessment status + provisional diagnosis · C Additional remarks. **Save** → Patient Details (history) |
+| 8 | Handover Details | M13 | Opens after 6 + 7 Save. A Place of initiation: RAP / ADS / FSC cards, pre-selected with the place last used on the tablet (no GPS) · B Date + time pickers, filled with now · C Receiving medical officer: search staff list (name or personnel ID, downloaded from the dashboard at sign-in) → card with photo, name, rank, designation, role, age, ID, unit, phone; "not in list" manual entry marked not verified · D Next course of action: one of Continue at RAP / MOS, Evacuate to higher facility, Handover to next echelon, Other (specify). **Save & Continue** → status **In transit** → 9 |
+| 9 | Prepare Evacuation | M13B | Final step. A Date + time of evacuation (filled with now) · B Assisted by MO? Yes/No · C Assisted by NA? Yes/No · D Patient condition during evacuation: triage cards pre-filled with the latest triage + optional notes · E Mode: Ambulance (ground) / Helicopter (air) / Stretcher (manual / on-site), one choice. **Save** → status **Handed over**, record read only |
+| 10 | Evacuation Completed | M19 | Opens after 9 Save. Completion card (patient, Handed over, condition, mode) + delivery status (Not yet on the next team's tablet / Sent — not yet confirmed / Received by MED-… at time). Actions: **Hand over to next team** (M20: Show QR or Share via Bluetooth) · Summary of total evacuation (full read-only report) · Track case · Generate report (coming next) · Record next casualty (→ Scan). Next team: Home → **Receive patient** (M21: Scan QR or Receive via Bluetooth) → Open patient record |
 
 **Open for client confirmation:** the wireframe orders Handover (8) before Prepare Evacuation (9); the Point A → B
 flow suggests preparing the evacuation first. "Evacuation Completed" must not imply that a digital transfer was

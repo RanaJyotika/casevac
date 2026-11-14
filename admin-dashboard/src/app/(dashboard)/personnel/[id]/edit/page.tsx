@@ -64,6 +64,8 @@ export default async function EditPersonPage({ params }: PageProps<"/personnel/[
               rank: person.rank,
               unit: person.unit,
               role: person.staff.role,
+              photo: person.staff.photo ?? "",
+              dateOfBirth: person.staff.dateOfBirth ?? "",
               designation: person.staff.designation,
               professionalRegistration: person.staff.professionalRegistration,
               contactPhone: person.contactPhone,

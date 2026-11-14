@@ -1,10 +1,11 @@
 /**
  * Home dashboard figures (SCREEN_SPECIFICATIONS.md M02), computed from a list
- * of casualty summaries. Pure functions: the data source can change (demo
- * dataset today, encrypted local storage next, synced backend later)
- * without touching the screen.
+ * of casualty summaries. Pure functions: the data source can change (records
+ * saved on this tablet today, synced backend later) without touching the
+ * screen.
  */
 import type { EvacuationStage, TriageCategory } from '../../types';
+import { MOI_OPTIONS } from '../evacuation/assessment';
 
 /** The six companies (client example names — confirm with client). */
 export const COMPANIES = [
@@ -33,7 +34,7 @@ export const STAGE_ORDER: readonly EvacuationStage[] = [
 
 export const STAGE_LABEL: Record<EvacuationStage, string> = {
   AWAITING_PICKUP: 'Awaiting pickup',
-  IN_TRANSFER: 'In transfer',
+  IN_TRANSFER: 'In transit',
   HANDED_OVER: 'Handed over',
   COMPLETED: 'Completed',
 };
@@ -44,15 +45,37 @@ export interface CasualtySummary {
   /** null for unidentified (temporary) casualties — never guessed. */
   name: string | null;
   temporary: boolean;
-  company: Company;
-  triage: TriageCategory;
+  /** null when not recorded (evacuation records do not capture it yet). */
+  company: Company | null;
+  /** null until a triage category has been recorded. */
+  triage: TriageCategory | null;
   stage: EvacuationStage;
   /** ISO-8601 UTC time of the last recorded update. */
   updatedAt: string;
-  /** ISO-8601 UTC time of injury (drives "time since injury"). */
-  injuredAt: string;
+  /** ISO-8601 UTC time of injury (drives "time since injury"); null if not recorded. */
+  injuredAt: string | null;
   /** User ID of the medic who started the record, e.g. MED-00001. */
   recordedBy: string;
+  /** The evacuation behind this row (its assessment), for Continue. */
+  assessmentId?: string;
+  /**
+   * Mechanisms of injury recorded in the assessment ("Other" is stored as
+   * its description). Empty / absent when not recorded.
+   */
+  mechanisms?: string[];
+}
+
+/** Injury rows, in the order of the assessment form, then the fallbacks. */
+export const INJURY_TYPES: readonly string[] = [...MOI_OPTIONS];
+export const INJURY_NOT_RECORDED = 'Not recorded';
+
+export interface InjuryBreakdown {
+  /** A mechanism of injury, "Other" or "Not recorded". */
+  injury: string;
+  counts: TriageCounts;
+  /** Casualties of this injury type not yet triaged. */
+  untriaged: number;
+  total: number;
 }
 
 export type TriageCounts = Record<TriageCategory, number>;
@@ -67,6 +90,11 @@ export interface DashboardStats {
   total: number;
   byTriage: TriageCounts;
   byCompany: CompanyBreakdown[];
+  /**
+   * Casualties by type of injury (mechanism). A casualty with several
+   * mechanisms counts once in each; none recorded → "Not recorded".
+   */
+  byInjury: InjuryBreakdown[];
   byStage: Record<EvacuationStage, number>;
   /** Not yet completed. */
   activeEvacuations: number;
@@ -100,9 +128,13 @@ export function computeDashboardStats(
   );
 
   for (const c of casualties) {
-    byTriage[c.triage] += 1;
     byStage[c.stage] += 1;
-    const counts = companyCounts.get(c.company);
+    // Not yet triaged / company not recorded: counted in the total only.
+    if (!c.triage) {
+      continue;
+    }
+    byTriage[c.triage] += 1;
+    const counts = c.company ? companyCounts.get(c.company) : undefined;
     if (counts) {
       counts[c.triage] += 1;
     }
@@ -117,6 +149,8 @@ export function computeDashboardStats(
     };
   });
 
+  const byInjury = injuryBreakdown(casualties);
+
   const recent = [...casualties]
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
     .slice(0, recentLimit);
@@ -125,12 +159,48 @@ export function computeDashboardStats(
     total: casualties.length,
     byTriage,
     byCompany,
+    byInjury,
     byStage,
     activeEvacuations: casualties.length - byStage.COMPLETED,
     pendingHandover: byStage.AWAITING_PICKUP + byStage.IN_TRANSFER,
     completedEvacuations: byStage.COMPLETED,
     recent,
   };
+}
+
+/** Casualties per injury type, split by triage (see DashboardStats.byInjury). */
+export function injuryBreakdown(
+  casualties: readonly CasualtySummary[],
+): InjuryBreakdown[] {
+  const known = new Set(INJURY_TYPES);
+  const rows = new Map<string, InjuryBreakdown>(
+    [...INJURY_TYPES, INJURY_NOT_RECORDED].map(injury => [
+      injury,
+      { injury, counts: emptyTriage(), untriaged: 0, total: 0 },
+    ]),
+  );
+  for (const c of casualties) {
+    const types = new Set(
+      (c.mechanisms ?? [])
+        .filter(m => m && m.trim())
+        .map(m => (known.has(m) ? m : 'Other')),
+    );
+    if (types.size === 0) {
+      types.add(INJURY_NOT_RECORDED);
+    }
+    for (const t of types) {
+      const row = rows.get(t)!;
+      row.total += 1;
+      if (c.triage) {
+        row.counts[c.triage] += 1;
+      } else {
+        row.untriaged += 1;
+      }
+    }
+  }
+  const list = [...rows.values()];
+  // "Not recorded" only when it applies; every injury type always listed.
+  return list.filter(r => r.injury !== INJURY_NOT_RECORDED || r.total > 0);
 }
 
 /* ------------------------- Per-medic and alerts ------------------------- */
@@ -210,9 +280,10 @@ export function computeAlerts(
   const alerts: HomeAlert[] = [];
 
   const waiting = casualties.filter(
-    c =>
+    (c): c is CasualtySummary & { injuredAt: string } =>
       c.triage === 'RED' &&
       c.stage === 'AWAITING_PICKUP' &&
+      c.injuredAt !== null &&
       minutesSince(c.injuredAt) > RED_WAIT_LIMIT_MIN,
   );
   if (waiting.length > 0) {
@@ -247,7 +318,7 @@ export function computeAlerts(
         inTransfer,
         'casualty',
         'casualties',
-      )} ready for the next echelon.`,
+      )} in transit — complete Prepare Evacuation to finish the handover.`,
       action: 'Open',
     });
   }

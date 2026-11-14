@@ -74,6 +74,12 @@ test('Home in portrait keeps all first actions and puts alerts near the top', as
   const tree = await openHome();
   const text = allText(tree);
 
+  // No patients open: no patient strip or panel at all.
+  expect(text).not.toContain('PATIENTS');
+  expect(
+    tree.root.findAll(n => n.props.accessibilityLabel === 'New patient tab'),
+  ).toHaveLength(0);
+
   // Every first action is still there.
   expect(find(tree, 'Scan patient tag')).toBeDefined();
   expect(find(tree, 'Patient or casualty ID')).toBeDefined();
@@ -92,6 +98,44 @@ test('Home in portrait keeps all first actions and puts alerts near the top', as
   );
   expect(at('My Recent Records')).toBeGreaterThan(at('Operational Snapshot'));
   // Top bar drops secondary text when narrow
-  expect(text).toContain('Offline · 36 queued');
+  // No records on this tablet yet: nothing queued, no demo casualties.
+  expect(text).toContain('Offline');
+  expect(text).not.toContain('queued');
+  expect(text).toContain('No active evacuations');
   expect(text).not.toContain('Not synced yet');
+});
+
+test('portrait: with two patients open, the navy patient strip sits under the top bar', async () => {
+  const tree = await openHome();
+  const press = async (label: string) =>
+    ReactTestRenderer.act(async () => {
+      await find(tree, label).props.onPress();
+      await wait(30);
+    });
+  /** An unidentified casualty, evacuated from Home, then back to Home. */
+  const startOne = async () => {
+    await press('Register casualty');
+    await press('Save & Continue');
+    await press('Start Evacuation');
+  };
+  await startOne();
+  // One patient: still no strip.
+  expect(
+    tree.root.findAll(n => n.props.accessibilityLabel === 'New patient tab'),
+  ).toHaveLength(0);
+  await press('Back');
+  await press('Back');
+  await startOne();
+
+  const text = allText(tree);
+  expect(text).not.toContain('PATIENTS'); // no side panel in portrait
+  expect(find(tree, 'New patient tab')).toBeDefined();
+  // Strip directly under this screen's top bar, above the screen content.
+  const header = text.indexOf('Initial Casualty Assessment');
+  const strip = text.indexOf('Patient 1');
+  expect(strip).toBeGreaterThan(header);
+  expect(text.indexOf('Patient 2')).toBeGreaterThan(header);
+  expect(strip).toBeLessThan(
+    text.indexOf('Is the casualty conscious and able to provide details?'),
+  );
 });

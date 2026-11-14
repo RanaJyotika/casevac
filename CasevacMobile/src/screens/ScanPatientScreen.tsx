@@ -26,6 +26,7 @@ import {
 } from 'react-native';
 import { Camera } from 'react-native-camera-kit';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { APP_BRAND } from '../brand';
 import {
   AppHeader,
   GlyphIcon,
@@ -52,12 +53,19 @@ import {
 } from '../services/qr/identifyPatient';
 import { colors, radius, spacing, typography } from '../theme/tokens';
 import { formatDateTime } from '../utils/format';
+import { isFrame } from '../services/transfer/qrFrames';
+import { isTransferEnvelope } from '../services/transfer/transferPackage';
 
 interface ScanPatientScreenProps {
   onBack: () => void;
   onIdentified: (result: VerifiedIdentification) => void;
   /** Unknown Casualty: register a casualty with no (readable) wristband. */
   onRegisterPatient: () => void;
+  /**
+   * The camera read a patient-transfer QR from another tablet (not a
+   * wristband). Receives the code that was read, so nothing is lost.
+   */
+  onTransferQr?: (firstCode: string) => void;
   /** Injected in tests; defaults to the directory downloaded at sign-in. */
   deps?: IdentificationDeps;
 }
@@ -88,7 +96,7 @@ async function checkCameraPermission(
   }
   const outcome = await PermissionsAndroid.request(permission, {
     title: 'Camera access',
-    message: 'CASEVAC uses the camera only to read patient wristband QR codes.',
+    message: 'Jeewan uses the camera only to read patient wristband QR codes.',
     buttonPositive: 'Allow',
     buttonNegative: 'Not now',
   });
@@ -104,6 +112,7 @@ export function ScanPatientScreen({
   onBack,
   onIdentified,
   onRegisterPatient,
+  onTransferQr,
   deps,
 }: ScanPatientScreenProps) {
   const services = useMemo<IdentificationDeps>(
@@ -188,6 +197,13 @@ export function ScanPatientScreen({
       if (skip && skip.value === value && Date.now() < skip.until) {
         return;
       }
+      // A patient transfer from another tablet (not a wristband): hand over
+      // to Receive patient, which reads the rest of the QR frames.
+      if (onTransferQr && (isFrame(value) || isTransferEnvelope(value))) {
+        busy.current = true;
+        onTransferQr(value);
+        return;
+      }
       busy.current = true;
       lastValue.current = value;
       setPhase({ kind: 'verifying' });
@@ -208,7 +224,7 @@ export function ScanPatientScreen({
         setPhase({ kind: 'failed', result });
       }
     },
-    [onIdentified, services],
+    [onIdentified, onTransferQr, services],
   );
 
   const scanAgain = () => {
@@ -236,7 +252,7 @@ export function ScanPatientScreen({
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <AppHeader
-        eyebrow="CASEVAC"
+        eyebrow={APP_BRAND}
         title="Scan Patient QR"
         onBack={onBack}
         right={
@@ -319,8 +335,8 @@ export function ScanPatientScreen({
                 title="Camera permission needed"
                 message={
                   phase.blocked
-                    ? 'Camera access is turned off for CASEVAC. Enable it in Android settings to scan wristbands.'
-                    : 'CASEVAC needs the camera to read wristband QR codes. Nothing is recorded or stored from the camera.'
+                    ? 'Camera access is turned off for Jeewan. Enable it in Android settings to scan wristbands.'
+                    : 'Jeewan needs the camera to read wristband QR codes. Nothing is recorded or stored from the camera.'
                 }
               />
               {phase.blocked ? (

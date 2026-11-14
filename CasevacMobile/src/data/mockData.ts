@@ -1,7 +1,7 @@
 /**
  * SYNTHETIC DEMONSTRATION DATA ONLY.
- * Fictional records for UI development. Not real personnel or patients.
- * Dashboard demo casualties live in data/demoCasualties.ts.
+ * Fictional sign-in account for testing. Not a real person. (The Home
+ * dashboard shows only records saved on the tablet — no demo casualties.)
  */
 import type { Clinician } from '../types';
 

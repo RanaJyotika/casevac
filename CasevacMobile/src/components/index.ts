@@ -1,6 +1,6 @@
 export { AppHeader } from './AppHeader';
 export { AppShell, type ShellStatus } from './AppShell';
-export { CompanyBars, TRIAGE_SHORT, TriageDonut } from './dashboard';
+export { CompanyBars, InjuryBars, TRIAGE_SHORT, TriageDonut } from './dashboard';
 export {
   AlertCards,
   Card,
@@ -15,6 +15,11 @@ export {
   TriagePill,
 } from './home';
 export { Icon, type IconName } from './Icon';
+export {
+  EvacuationBadge,
+  STATUS_PALETTE,
+  type EvacuationBadgeKind,
+} from './evacuationBadges';
 export { FormField } from './FormField';
 export { ListRow } from './ListRow';
 export { Notice } from './Notice';

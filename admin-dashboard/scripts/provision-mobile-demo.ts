@@ -14,6 +14,7 @@ import { mkdirSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { getRepository } from "../src/lib/data";
 import { ok, runTransaction } from "../src/lib/services/common";
+import { buildTransferKeyFile } from "../src/lib/crypto/transfer-key";
 import { buildIdentityDirectory, buildTrustedIssuerKeys } from "../src/lib/services/directory-service";
 
 function writeJsonAtomic(file: string, value: unknown) {
@@ -52,8 +53,19 @@ async function main() {
     return ok(null);
   });
 
+  const transferKey = buildTransferKeyFile();
+  if (transferKey) {
+    writeJsonAtomic(path.join(outDir, "transfer-key.json"), transferKey);
+  }
+
   console.log(`Wrote mobile provisioning files to ${outDir}`);
   console.log(`  Trusted issuer key: ${trusted.keys[0].keyId}`);
+  console.log(
+    transferKey
+      ? `  Unit transfer key: ${transferKey.keyId}`
+      : "  Unit transfer key: not configured (run `npm run transfer:keygen`) — the app keeps its bundled development key.",
+  );
+  console.log(`  Clinical staff (handover): ${directory.staff.length}`);
   console.log(`  Patients: ${directory.patients.length} · Signed credentials: ${directory.credentials.length}`);
   if (legacy.length > 0) {
     console.warn(`  WARNING: ${legacy.length} active QR code(s) are legacy unsigned v1 — reissue them in the dashboard.`);

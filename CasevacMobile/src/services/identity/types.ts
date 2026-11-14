@@ -59,6 +59,29 @@ export interface PatientIdentity {
   photo: string | null;
 }
 
+/**
+ * A clinician a casualty can be handed over to (from the dashboard's staff
+ * register: active medical officers and medics). Downloaded at sign-in.
+ */
+export interface StaffMember {
+  staffId: string;
+  /** Personnel ID, e.g. MED-00003 */
+  displayId: string;
+  fullName: string;
+  rank: string;
+  unit: string;
+  /** e.g. MEDICAL_OFFICER, MEDIC */
+  role: string;
+  /** e.g. "Doctor / Medical Officer" */
+  roleLabel: string;
+  designation: string;
+  /** ISO date (YYYY-MM-DD) or null; used to show age. */
+  dateOfBirth: string | null;
+  contactPhone: string;
+  /** Small JPEG data URL from the dashboard, or null. */
+  photo: string | null;
+}
+
 export interface DirectoryInfo {
   source: DirectorySource;
   /** When the directory was produced (ISO-8601), null if never provisioned. */
@@ -73,4 +96,11 @@ export interface IdentityDirectory {
   findPatient(patientId: string): Promise<PatientIdentity | null>;
   /** Exact match on the registrar display ID (e.g. PAT-00012), case-insensitive. */
   findPatientByDisplayId(displayId: string): Promise<PatientIdentity | null>;
+  /**
+   * Clinicians matching a name or personnel ID (case-insensitive; every word
+   * typed must match). Medical officers first. Empty query → empty list.
+   */
+  searchStaff(query: string, limit?: number): Promise<StaffMember[]>;
+  /** Number of clinicians on this tablet (0 if none were downloaded). */
+  staffCount(): Promise<number>;
 }

@@ -66,6 +66,20 @@ export class PatientHistoryStore {
     const all = await this.all();
     await this.storage.setItem(STORAGE_KEY, JSON.stringify([...all, entry]));
   }
+
+  async get(id: string): Promise<HistoryEntry | null> {
+    return (await this.all()).find(e => e.id === id) ?? null;
+  }
+
+  /**
+   * Adds the entry, or replaces the one with the same id — one evacuation
+   * keeps one entry as later steps (interventions, handover) are saved.
+   */
+  async upsert(entry: HistoryEntry): Promise<void> {
+    const all = await this.all();
+    const rest = all.filter(e => e.id !== entry.id);
+    await this.storage.setItem(STORAGE_KEY, JSON.stringify([...rest, entry]));
+  }
 }
 
 let defaultStore: PatientHistoryStore | null = null;

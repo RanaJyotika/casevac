@@ -25,7 +25,8 @@ export type IconName =
   | 'droplet'
   | 'ambulance'
   | 'calendar'
-  | 'chevronDown';
+  | 'chevronDown'
+  | 'lock';
 
 const PATHS: Record<IconName, React.ReactNode> = {
   scan: (
@@ -109,6 +110,12 @@ const PATHS: Record<IconName, React.ReactNode> = {
     </>
   ),
   chevronDown: <Path d="m6 9 6 6 6-6" />,
+  lock: (
+    <>
+      <Rect x={4} y={11} width={16} height={10} rx={2} />
+      <Path d="M8 11V7a4 4 0 0 1 8 0v4" />
+    </>
+  ),
   hospital: (
     <>
       <Rect x={3} y={3} width={18} height={18} rx={2} />

@@ -16,6 +16,8 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { usePatientStrip } from '../navigation/patientStripContext';
+import { APP_BRAND } from '../brand';
 import { colors, layout, radius, spacing, typography } from '../theme/tokens';
 import type { Clinician } from '../types';
 import { formatTime } from '../utils/format';
@@ -66,6 +68,7 @@ export function AppShell({
   children,
 }: AppShellProps) {
   const insets = useSafeAreaInsets();
+  const strip = usePatientStrip();
   const { width } = useWindowDimensions();
   const compact = width < COMPACT_BELOW;
   const clock = useClock();
@@ -102,7 +105,7 @@ export function AppShell({
         ]}
       >
         <View style={styles.titleRow}>
-          <Text style={styles.brand}>CASEVAC</Text>
+          <Text style={styles.brand}>{APP_BRAND}</Text>
           <Text style={styles.slash}>/</Text>
           <Text
             style={styles.page}
@@ -182,6 +185,9 @@ export function AppShell({
           </View>
         </Pressable>
       </View>
+
+      {/* Portrait: open patients, directly under the top bar. */}
+      {strip}
 
       <ScrollView
         style={styles.content}

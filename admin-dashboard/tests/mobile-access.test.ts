@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { issuerKeyFromPkcs8, setIssuerKeyForTesting } from "@/lib/crypto/qr-issuer";
+import { setTransferKeyForTesting } from "@/lib/crypto/transfer-key";
 import { getRepository, setRepositoryForTesting } from "@/lib/data";
 import { parseQrPayload } from "@/lib/domain/qr-format";
 import { JsonFileRepository } from "@/lib/data/json-file-repository";
@@ -37,6 +38,7 @@ beforeEach(() => {
   dir = mkdtempSync(path.join(tmpdir(), "casevac-mobile-"));
   setRepositoryForTesting(new JsonFileRepository(path.join(dir, "db.json")));
   resetSignInThrottleForTesting();
+  setTransferKeyForTesting(null);
 });
 
 afterEach(() => {
@@ -107,6 +109,16 @@ describe("provisioning sent at sign-in", () => {
 
     // The tablet receives what it needs to verify and resolve that QR.
     expect(trustedKeys?.keys[0]).toMatchObject({ keyId: "test-issuer", publicKey: key.key.publicKeyBase64Url });
+    // …and the unit key for handing casualties to another tablet, when configured.
+    expect(result.provisioning.transferKey).toBeNull();
+    setTransferKeyForTesting({ keyId: "test-transfer", key: "A".repeat(43) });
+    const again = await mobileSignIn({ userId: doc.displayId, password });
+    expect(again.ok && again.provisioning.transferKey).toMatchObject({
+      format: "casevac.transfer-key",
+      keyId: "test-transfer",
+      key: "A".repeat(43),
+    });
+    setTransferKeyForTesting(null);
     expect(directory.patients).toEqual([
       expect.objectContaining({
         patientId: soldier.id,
@@ -147,6 +159,25 @@ describe("soldier ID photo", () => {
       expect(r.ok).toBe(false);
       if (!r.ok) expect(r.errors.photo).toBeDefined();
     }
+  });
+});
+
+describe("medic / doctor ID photo", () => {
+  it("is stored on registration, kept or cleared on edit, and validated", async () => {
+    const staff = unwrap(
+      await registerStaff({ fullName: "Anita Verma", serviceNumber: "DEMO-P-1", rank: "Naik", unit: "Demo FA", role: "MEDIC", photo: PHOTO }, actor),
+    );
+    expect(staff.staff.photo).toBe(PHOTO);
+
+    const edit = { fullName: "Anita Verma", rank: "Naik", unit: "Demo FA", role: "MEDIC" };
+    expect(unwrap(await updateStaff(staff.id, { ...edit, photo: PHOTO }, actor)).staff.photo).toBe(PHOTO);
+    expect(unwrap(await updateStaff(staff.id, { ...edit, photo: "" }, actor)).staff.photo).toBeNull();
+
+    const bad = await registerStaff(
+      { fullName: "B Person", serviceNumber: "DEMO-P-2", rank: "Naik", unit: "Demo FA", role: "MEDIC", photo: "https://example.com/a.jpg" },
+      actor,
+    );
+    expect(bad.ok === false && bad.fieldErrors?.photo).toBeTruthy();
   });
 });
 

@@ -16,6 +16,8 @@
  * key (Android Keystore) and define how long a stale directory is trusted.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import transferKeyJson from '../../provisioning/transfer-key.json';
+import { decodeBase64Url } from '../qr/base64url';
 import {
   StaticIdentityDirectory,
   StaticTrustStore,
@@ -33,15 +35,52 @@ export interface KeyValueStorage {
   setItem(key: string, value: string): Promise<void>;
 }
 
+/** Unit key used to encrypt tablet-to-tablet casualty handover. */
+export interface TransferKey {
+  keyId: string;
+  /** 32 bytes. Secret. */
+  key: Uint8Array;
+}
+
 interface Active {
   trustStore: TrustStore;
   directory: IdentityDirectory;
+  transferKey: TransferKey | null;
 }
 
 /** Raw JSON as sent by the dashboard. */
 export interface RawProvisioning {
   directory?: unknown;
   trustedKeys?: unknown;
+  /** Unit transfer key file (casevac.transfer-key); absent on older dashboards. */
+  transferKey?: unknown;
+}
+
+/** Parses a casevac.transfer-key file; null if missing or malformed. */
+export function parseTransferKey(json: unknown): TransferKey | null {
+  if (!json || typeof json !== 'object') {
+    return null;
+  }
+  const f = json as Record<string, unknown>;
+  if (
+    f.format !== 'casevac.transfer-key' ||
+    f.formatVersion !== 1 ||
+    typeof f.keyId !== 'string' ||
+    !/^[a-z0-9][a-z0-9-]{0,31}$/.test(f.keyId) ||
+    typeof f.key !== 'string'
+  ) {
+    return null;
+  }
+  const key = decodeBase64Url(f.key);
+  return key && key.length === 32 ? { keyId: f.keyId, key } : null;
+}
+
+let bundledTransferKey: TransferKey | null | undefined;
+function getBundledTransferKey(): TransferKey | null {
+  if (bundledTransferKey === undefined) {
+    bundledTransferKey = parseTransferKey(transferKeyJson);
+  }
+  return bundledTransferKey;
 }
 
 function build(raw: RawProvisioning): Active | null {
@@ -59,6 +98,7 @@ function build(raw: RawProvisioning): Active | null {
   return {
     trustStore: new StaticTrustStore(keys),
     directory: new StaticIdentityDirectory(parsedDirectory, 'BACKEND'),
+    transferKey: parseTransferKey(raw.transferKey),
   };
 }
 
@@ -83,6 +123,7 @@ export class ProvisioningStore {
         JSON.stringify({
           directory: raw.directory,
           trustedKeys: raw.trustedKeys,
+          transferKey: raw.transferKey,
           savedAt: new Date().toISOString(),
         }),
       );
@@ -116,6 +157,14 @@ export class ProvisioningStore {
   directory(): IdentityDirectory {
     return this.active?.directory ?? getBundledIdentityDirectory();
   }
+
+  /**
+   * Unit key for casualty handover between tablets: the one downloaded at
+   * sign-in, else the bundled development key. Null if neither is usable.
+   */
+  transferKey(): TransferKey | null {
+    return this.active?.transferKey ?? getBundledTransferKey();
+  }
 }
 
 let defaultStore: ProvisioningStore | null = null;
@@ -132,4 +181,8 @@ export function getActiveTrustStore(): TrustStore {
 
 export function getActiveIdentityDirectory(): IdentityDirectory {
   return getProvisioningStore().directory();
+}
+
+export function getActiveTransferKey(): TransferKey | null {
+  return getProvisioningStore().transferKey();
 }

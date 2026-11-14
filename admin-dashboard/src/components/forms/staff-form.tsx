@@ -8,6 +8,7 @@ import { Alert } from "@/components/ui/layout";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { IDLE_STATE, type ActionState } from "@/lib/action-state";
 import { STATUS_OPTIONS } from "@/lib/domain/validation";
+import { PhotoField } from "./photo-field";
 
 type Action = (prev: ActionState, formData: FormData) => Promise<ActionState>;
 
@@ -82,11 +83,13 @@ export function StaffForm({
           <TextField name="serviceNumberLocked" label="Personnel / service number" readOnly defaultValue={serviceNumber} hint="Identity-defining; cannot be edited in the MVP." />
         )}
         <TextField name="rank" label="Rank" required maxLength={40} defaultValue={v.rank} error={e.rank} />
+        <TextField name="dateOfBirth" label="Date of birth" type="date" defaultValue={v.dateOfBirth} error={e.dateOfBirth} hint="Shown as age on the medic tablet when a casualty is handed over." />
         <TextField name="designation" label="Designation" maxLength={60} defaultValue={v.designation} error={e.designation} hint="Required for doctors / medical officers (e.g. Regimental Medical Officer)." />
         <TextField name="unit" label="Unit / facility" required maxLength={80} defaultValue={v.unit} error={e.unit} />
         <TextField name="professionalRegistration" label="Professional registration" maxLength={60} defaultValue={v.professionalRegistration} error={e.professionalRegistration} hint="Where applicable. Not verified in the demo." />
         <TextField name="contactPhone" label="Contact phone" type="tel" maxLength={20} defaultValue={v.contactPhone} error={e.contactPhone} />
         <SelectField name="status" label="Account status" options={toOptions(STATUS_OPTIONS)} defaultValue={v.status || "ACTIVE"} error={e.status} hint="Sign-in credentials are not issued in the MVP." />
+        <PhotoField defaultValue={v.photo} error={e.photo} />
       </fieldset>
 
       {mode === "create" ? (

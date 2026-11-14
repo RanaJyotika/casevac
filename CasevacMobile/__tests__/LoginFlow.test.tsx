@@ -66,10 +66,10 @@ async function renderApp(): Promise<Renderer> {
   return tree;
 }
 
-test('shows the Jeevan login screen with only the expected controls', async () => {
+test('shows the Jeewan login screen with only the expected controls', async () => {
   const tree = await renderApp();
   const text = allText(tree);
-  expect(text).toContain('JEEVAN');
+  expect(text).toContain('JEEWAN');
   expect(text).toContain('Medic Login');
   expect(text).toContain('Forgot Password?');
   expect(text).toContain('Emergency Record');

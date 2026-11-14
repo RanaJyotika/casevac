@@ -63,18 +63,39 @@ flowchart LR
     H --> S[2 Scan Patient QR]
     S --> P[3 Patient Details]
     S -->|No wristband| T[Temporary registration]
-    P --> C{4 Conscious and able to give details?}
-    C -->|Yes| A[5 Initial Casualty Assessment]
-    C -->|No| T
-    T --> A
-    A --> I[6 Initial Interventions]
-    I --> K[7 Casualty Condition / Triage]
-    K --> HD[8 Handover Details]
-    HD --> PE[9 Prepare Evacuation]
-    PE --> D[10 Evacuation Completed]
+    T --> P
+    P --> A[4 + 5 Casualty Assessment<br/>conscious? · incident · MARCH · vitals]
+    A -->|Save & Continue| K[6 + 7 Interventions & Triage<br/>interventions · triage · diagnosis]
+    K -->|Save| HD[8 Handover Details<br/>place · date/time · receiving MO · next action]
+    HD -->|Save & Continue| PE[9 Prepare Evacuation<br/>date/time · MO · NA · condition · mode]
+    PE -->|Save| D[10 Evacuation Completed]
 ```
 
-Order of steps 8 and 9 awaits client confirmation. Screen IDs: `SCREEN_SPECIFICATIONS.md`.
+**Patient tabs.** Several casualties can be evacuated at once. Start
+Evacuation from Home opens a tab for that patient; ＋ opens a new tab to
+identify the next casualty; tabs show name / ID (or "Patient N"), triage
+colour and status (Not handed over · In transit · Handed over). Switching tabs
+keeps each patient's place and unsaved input (drafts); open tabs and drafts
+survive a restart and are kept per medic. ✕ closes a tab after confirmation
+(saved records stay); Home → Continue reopens an evacuation at its next
+unsaved step. Up to 6 tabs. Fully offline.
+
+Client screens 4 + 5 and 6 + 7 are each combined into one screen. The status
+of an evacuation follows the last step saved: assessment or interventions →
+**Awaiting pickup**; Handover Details (8) → **In transit**; Prepare
+Evacuation (9) → **Handed over** (read only). Saving 9 opens Evacuation
+Completed (10), whose **Hand over to next team** sends the whole record to
+the next team's tablet — by QR (looping QR frames, then the receiver's
+receipt code is confirmed) or Bluetooth (CASEVAC tablets only, Android
+pairing number, receiver accepts, receipt returns automatically). The next
+team uses **Receive patient** on Home, then Open patient record → Start
+Evacuation. Every transfer is signed by the sending tablet and encrypted with
+the unit transfer key; delivery shows as received only with a verified
+receipt. Answering
+"No" to the consciousness question currently opens the same assessment (an
+unconscious casualty still needs MARCH and vitals); the wireframe's "No →
+Temporary registration" awaits client confirmation. Order of steps 8 and 9
+awaits client confirmation. Screen IDs: `SCREEN_SPECIFICATIONS.md`.
 
 ### 3b. Detailed screen map
 

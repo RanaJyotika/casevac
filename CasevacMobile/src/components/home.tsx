@@ -33,6 +33,7 @@ import {
 import type { EvacuationStage, TriageCategory } from '../types';
 import { formatTime } from '../utils/format';
 import { TRIAGE_SHORT } from './dashboard';
+import { STATUS_PALETTE } from './evacuationBadges';
 import { Icon, type IconName } from './Icon';
 
 /* -------------------------------- Helpers -------------------------------- */
@@ -339,29 +340,31 @@ const STATUS: Record<
   EvacuationStage,
   { label: string; icon: IconName; surface: string; text: string }
 > = {
+  // Same colours as the patient-history badges (evacuationBadges.tsx) —
+  // never the triage yellow / green, so a status is not read as triage.
   AWAITING_PICKUP: {
     label: 'Awaiting pickup',
     icon: 'clock',
-    surface: '#FEF5DC',
-    text: '#7A5200',
+    surface: STATUS_PALETTE.orange.surface,
+    text: STATUS_PALETTE.orange.text,
   },
   IN_TRANSFER: {
-    label: 'In transfer',
-    icon: 'arrowRight',
-    surface: '#EAF0FD',
-    text: '#1E40AF',
+    label: 'In transit',
+    icon: 'truck',
+    surface: STATUS_PALETTE.blue.surface,
+    text: STATUS_PALETTE.blue.text,
   },
   HANDED_OVER: {
-    label: 'Handover complete',
+    label: 'Handed over',
     icon: 'check',
-    surface: '#E7F5EC',
-    text: '#1E6B35',
+    surface: STATUS_PALETTE.teal.surface,
+    text: STATUS_PALETTE.teal.text,
   },
   COMPLETED: {
     label: 'Closed',
     icon: 'check',
-    surface: '#ECEEF2',
-    text: '#3B4652',
+    surface: STATUS_PALETTE.grey.surface,
+    text: STATUS_PALETTE.grey.text,
   },
 };
 
@@ -414,7 +417,16 @@ export function EvacuationRows({
             {r.name ?? 'Unidentified'}
           </Text>
           <View style={styles.triageCell}>
-            <TriagePill category={r.triage} />
+            {r.triage ? (
+              <TriagePill category={r.triage} />
+            ) : (
+              <Text
+                style={[styles.cellPlain, styles.unknown]}
+                numberOfLines={1}
+              >
+                Not triaged
+              </Text>
+            )}
           </View>
           <View style={styles.stageCell}>
             <Icon
@@ -467,7 +479,7 @@ export function RecentRecordRows({
   }
   const label = (r: CasualtySummary) =>
     `${r.casualtyId}, ${r.name ?? 'unidentified'}, ${
-      r.company
+      r.company ?? 'company not recorded'
     }, ${formatDayTime(r.updatedAt, now)}, ${STATUS[r.stage].label}`;
   if (compact) {
     return (
@@ -488,7 +500,7 @@ export function RecentRecordRows({
                 </Text>
               </Text>
               <Text style={styles.compactMeta} numberOfLines={1}>
-                {r.company} · {formatDayTime(r.updatedAt, now)}
+                {r.company ?? '—'} · {formatDayTime(r.updatedAt, now)}
               </Text>
             </View>
             <View style={styles.compactStatus}>
@@ -525,7 +537,7 @@ export function RecentRecordRows({
             {r.name ?? 'Unidentified'}
           </Text>
           <Text style={[styles.cellPlain, styles.unitCell]} numberOfLines={1}>
-            {r.company}
+            {r.company ?? '—'}
           </Text>
           <Text style={[styles.cellPlain, styles.dateCell]} numberOfLines={1}>
             {formatDayTime(r.updatedAt, now)}

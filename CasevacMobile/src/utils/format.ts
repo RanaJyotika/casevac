@@ -28,6 +28,28 @@ export function formatDateTime(iso: string): string {
   )}`;
 }
 
+/** Whole years from a YYYY-MM-DD date of birth; null if missing or invalid. */
+export function ageFrom(
+  dateOfBirth: string | null,
+  now: Date = new Date(),
+): number | null {
+  if (!dateOfBirth) {
+    return null;
+  }
+  const [y, m, d] = dateOfBirth.split('-').map(Number);
+  if (!y || !m || !d) {
+    return null;
+  }
+  let age = now.getFullYear() - y;
+  if (
+    now.getMonth() + 1 < m ||
+    (now.getMonth() + 1 === m && now.getDate() < d)
+  ) {
+    age -= 1;
+  }
+  return age >= 0 && age <= 120 ? age : null;
+}
+
 export type StatusTone = 'neutral' | 'success' | 'warning' | 'error';
 
 /**

@@ -108,6 +108,19 @@ export class FieldRegistry {
     return (await this.list()).find(p => p.tempId === id) ?? null;
   }
 
+  /**
+   * Adds a field-registered casualty received from another tablet, keeping
+   * their TEMP- ID. Does nothing if this tablet already has that ID.
+   */
+  async importPatient(patient: FieldPatient): Promise<boolean> {
+    const all = await this.list();
+    if (all.some(p => p.tempId === patient.tempId)) {
+      return false;
+    }
+    await this.storage.setItem(STORAGE_KEY, JSON.stringify([...all, patient]));
+    return true;
+  }
+
   /** Validates and saves; throws on invalid input (screens validate first). */
   async register(
     input: FieldPatientInput,

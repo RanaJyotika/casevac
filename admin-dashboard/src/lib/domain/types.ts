@@ -53,6 +53,13 @@ export interface StaffDetails {
   role: RoleId;
   designation: string;
   professionalRegistration: string;
+  /** Optional small ID photo (JPEG data URL, ≤ ~48 KB). Absent on records created before staff photos. */
+  photo?: string | null;
+  /**
+   * ISO date (YYYY-MM-DD) or null. Lets the tablet show the receiving
+   * officer's age at handover. Absent on records created before this field.
+   */
+  dateOfBirth?: string | null;
 }
 
 interface PersonBase {
@@ -143,6 +150,13 @@ export interface MobileLoginAccount {
   /** scrypt hash of the password; the plaintext is shown to the admin once only. */
   passwordHash: string;
   passwordSalt: string;
+  /**
+   * AES-256-GCM encrypted copy of the password so an admin can view it again
+   * after verifying with Windows Hello (see login-vault.ts). Absent on
+   * accounts issued before this existed or when no vault key is configured.
+   * Dashboard only: never sent to tablets.
+   */
+  passwordVault?: string | null;
   status: MobileAccountStatus;
   issuedAt: string;
   issuedBy: string;
@@ -197,7 +211,9 @@ export type AuditAction =
   | "MOBILE_LOGIN_REVOKED"
   | "MOBILE_LOGIN_ACTIVATED"
   | "MOBILE_LOGIN_ONLINE"
-  | "MOBILE_LOGIN_FAILED";
+  | "MOBILE_LOGIN_FAILED"
+  | "MOBILE_LOGIN_PASSWORD_VIEWED"
+  | "ADMIN_PASSKEY_REGISTERED";
 
 export interface AuditEvent {
   id: string;
@@ -220,7 +236,28 @@ export interface DatabaseSnapshot {
   teams: MedicalTeam[];
   /** Added after schema v1 shipped; older files load with an empty list. */
   mobileAccounts: MobileLoginAccount[];
+  /** Added later; older files load with an empty list. */
+  adminPasskeys: AdminPasskey[];
   auditLog: AuditEvent[];
+}
+
+/**
+ * A WebAuthn platform credential (Windows Hello on an admin's PC). Used to
+ * re-verify the admin before showing a stored mobile sign-in password.
+ */
+export interface AdminPasskey {
+  /** WebAuthn credential ID, base64url. */
+  id: string;
+  adminId: string;
+  /** SubjectPublicKeyInfo DER, base64url. */
+  publicKey: string;
+  /** COSE algorithm: -7 ES256, -257 RS256, -8 EdDSA. */
+  algorithm: number;
+  signCount: number;
+  /** Browser/OS hint captured at setup, e.g. "Windows · Chrome". */
+  label: string;
+  createdAt: string;
+  lastUsedAt: string | null;
 }
 
 export interface Actor {

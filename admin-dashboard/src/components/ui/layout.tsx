@@ -91,11 +91,16 @@ export function EmptyState({ title, children, action }: { title: string; childre
   );
 }
 
-export function DefinitionGrid({ items }: { items: ReadonlyArray<{ label: string; value: ReactNode; mono?: boolean }> }) {
+export function DefinitionGrid({
+  items,
+}: {
+  /** `wide` items span both columns (for values with controls or long text). */
+  items: ReadonlyArray<{ label: string; value: ReactNode; mono?: boolean; wide?: boolean }>;
+}) {
   return (
     <dl className="grid grid-cols-1 gap-x-6 px-5 py-2 sm:grid-cols-2">
       {items.map(item => (
-        <div key={item.label} className="border-b border-line-soft py-2.5">
+        <div key={item.label} className={`min-w-0 border-b border-line-soft py-2.5 ${item.wide ? "sm:col-span-2" : ""}`}>
           <dt className="text-xs text-muted">{item.label}</dt>
           <dd className={`mt-0.5 text-sm text-ink ${item.mono ? "font-mono" : ""}`}>
             {item.value === "" || item.value === null || item.value === undefined ? (

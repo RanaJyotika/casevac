@@ -9,6 +9,7 @@ import Svg, { Circle, G } from 'react-native-svg';
 import {
   TRIAGE_ORDER,
   type CompanyBreakdown,
+  type InjuryBreakdown,
   type TriageCounts,
 } from '../services/dashboard/dashboardStats';
 import { colors, spacing, triage, typography } from '../theme/tokens';
@@ -51,7 +52,7 @@ export function TriageDonut({
 
   let offset = 0;
   const segments = present.map(c => {
-    const length = (circumference * counts[c]) / total;
+    const length = total === 0 ? 0 : (circumference * counts[c]) / total;
     const segment = { c, length, offset };
     offset += length;
     return segment;
@@ -193,7 +194,122 @@ export function CompanyBars({ data }: { data: CompanyBreakdown[] }) {
   );
 }
 
+/** Not yet triaged: slate, never a triage colour (white text 4.8:1). */
+const UNTRIAGED = '#64748B';
+
+/**
+ * Casualties by type of injury (mechanism): one row per injury type, stacked
+ * triage segments (slate = not yet triaged) with each count printed inside,
+ * total on the right. A casualty with several injury types counts once in
+ * each row, so rows can add up to more than the number of casualties.
+ */
+export function InjuryBars({ data }: { data: InjuryBreakdown[] }) {
+  const max = Math.max(1, ...data.map(d => d.total));
+  const anyUntriaged = data.some(d => d.untriaged > 0);
+  return (
+    <View style={styles.bars}>
+      <View style={styles.barsHead}>
+        <Text style={styles.legendTitle}>Casualties by Injury</Text>
+        <View style={styles.barsLegend}>
+          {TRIAGE_ORDER.map(c => (
+            <View key={c} style={styles.barsLegendItem}>
+              <View
+                style={[
+                  styles.barsLegendSwatch,
+                  { backgroundColor: triage[c].fill },
+                ]}
+              />
+              <Text style={styles.barsLegendText}>{WORD[c]}</Text>
+            </View>
+          ))}
+          {anyUntriaged ? (
+            <View style={styles.barsLegendItem}>
+              <View
+                style={[
+                  styles.barsLegendSwatch,
+                  { backgroundColor: UNTRIAGED },
+                ]}
+              />
+              <Text style={styles.barsLegendText}>Not triaged</Text>
+            </View>
+          ) : null}
+        </View>
+      </View>
+      {data.map(d => {
+        const segments = [
+          ...TRIAGE_ORDER.filter(c => d.counts[c] > 0).map(c => ({
+            key: c,
+            n: d.counts[c],
+            fill: triage[c].fill,
+            text: triage[c].onFill,
+          })),
+          ...(d.untriaged > 0
+            ? [
+                {
+                  key: 'none',
+                  n: d.untriaged,
+                  fill: UNTRIAGED,
+                  text: '#FFFFFF',
+                },
+              ]
+            : []),
+        ];
+        return (
+          <View
+            key={d.injury}
+            style={styles.barRow}
+            accessible
+            accessibilityLabel={`${d.injury}: ${d.total} ${
+              d.total === 1 ? 'casualty' : 'casualties'
+            }. ${TRIAGE_ORDER.map(
+              c => `${triage[c].label} ${d.counts[c]}`,
+            ).join(', ')}${d.untriaged ? `, not triaged ${d.untriaged}` : ''}`}
+          >
+            <Text
+              style={[styles.barLabel, styles.injuryLabel]}
+              numberOfLines={1}
+            >
+              {d.injury}
+            </Text>
+            <View style={styles.barTrack}>
+              {d.total > 0 ? (
+                <View style={[styles.barFill, { flex: d.total }]}>
+                  {segments.map(s => (
+                    <View
+                      key={s.key}
+                      style={[
+                        styles.segment,
+                        { flex: s.n, backgroundColor: s.fill },
+                      ]}
+                    >
+                      <Text
+                        style={[styles.segmentText, { color: s.text }]}
+                        numberOfLines={1}
+                      >
+                        {s.n}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+              {max - d.total > 0 ? (
+                <View style={{ flex: max - d.total }} />
+              ) : null}
+            </View>
+            <Text style={styles.barTotal}>{d.total}</Text>
+          </View>
+        );
+      })}
+      <Text style={styles.footnote}>
+        A casualty with more than one type of injury is counted in each.
+      </Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  injuryLabel: { width: 130 },
+  footnote: { ...typography.helper, color: colors.textSecondary },
   bars: {
     gap: spacing.sm,
   },

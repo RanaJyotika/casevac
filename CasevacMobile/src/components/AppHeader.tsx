@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { usePatientStrip } from '../navigation/patientStripContext';
 import {
   colors,
   radius,
@@ -28,40 +29,45 @@ export function AppHeader({
   children,
   onBack,
 }: AppHeaderProps) {
+  const strip = usePatientStrip();
   return (
-    <View style={styles.container}>
-      <View style={[styles.topRow, !title && styles.topRowCompact]}>
-        {onBack ? (
-          <Pressable
-            onPress={onBack}
-            accessibilityRole="button"
-            accessibilityLabel="Back"
-            hitSlop={4}
-            style={({ pressed }) => [
-              styles.back,
-              pressed && styles.backPressed,
-            ]}
-          >
-            <Text style={styles.backText}>‹</Text>
-          </Pressable>
-        ) : null}
-        <View style={styles.titles}>
-          <Text
-            style={[styles.eyebrow, !title && styles.eyebrowStrong]}
-            accessibilityRole={title ? undefined : 'header'}
-          >
-            {eyebrow}
-          </Text>
-          {title ? (
-            <Text style={styles.title} accessibilityRole="header">
-              {title}
-            </Text>
+    <>
+      <View style={styles.container}>
+        <View style={[styles.topRow, !title && styles.topRowCompact]}>
+          {onBack ? (
+            <Pressable
+              onPress={onBack}
+              accessibilityRole="button"
+              accessibilityLabel="Back"
+              hitSlop={4}
+              style={({ pressed }) => [
+                styles.back,
+                pressed && styles.backPressed,
+              ]}
+            >
+              <Text style={styles.backText}>‹</Text>
+            </Pressable>
           ) : null}
+          <View style={styles.titles}>
+            <Text
+              style={[styles.eyebrow, !title && styles.eyebrowStrong]}
+              accessibilityRole={title ? undefined : 'header'}
+            >
+              {eyebrow}
+            </Text>
+            {title ? (
+              <Text style={styles.title} accessibilityRole="header">
+                {title}
+              </Text>
+            ) : null}
+          </View>
+          {right}
         </View>
-        {right}
+        {children ? <View style={styles.subRow}>{children}</View> : null}
       </View>
-      {children ? <View style={styles.subRow}>{children}</View> : null}
-    </View>
+      {/* Portrait: open patients, directly under the top bar. */}
+      {strip}
+    </>
   );
 }
 

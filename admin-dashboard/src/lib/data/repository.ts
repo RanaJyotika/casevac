@@ -7,6 +7,7 @@
  * `transaction` mapped to a database transaction.
  */
 import type {
+  AdminPasskey,
   AuditEvent,
   IdentityCredential,
   MedicalTeam,
@@ -33,6 +34,8 @@ export interface RepositoryReader {
   /** Looks up by normalised (upper-case) sign-in user ID. */
   findMobileAccountByUserId(userId: string): Promise<MobileLoginAccount | null>;
 
+  listAdminPasskeys(adminId: string): Promise<AdminPasskey[]>;
+
   listAuditEvents(limit: number): Promise<AuditEvent[]>;
 }
 
@@ -48,6 +51,8 @@ export interface RepositoryWriter extends RepositoryReader {
   /** Fails if the user ID is already used by a non-revoked account. */
   insertMobileAccount(account: MobileLoginAccount): Promise<void>;
   updateMobileAccount(account: MobileLoginAccount): Promise<void>;
+  insertAdminPasskey(passkey: AdminPasskey): Promise<void>;
+  updateAdminPasskey(passkey: AdminPasskey): Promise<void>;
   appendAudit(event: AuditEvent): Promise<void>;
 }
 

@@ -16,6 +16,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { APP_BRAND } from '../brand';
 import {
   AppHeader,
   FormField,
@@ -131,7 +132,7 @@ export function RegisterPatientScreen({
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <AppHeader
-        eyebrow="CASEVAC"
+        eyebrow={APP_BRAND}
         title="Register New Patient"
         onBack={onCancel}
       />

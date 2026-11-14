@@ -15,6 +15,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   Image,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -22,6 +23,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { APP_BRAND } from '../brand';
 import {
   AppHeader,
   Icon,
@@ -54,6 +56,17 @@ import {
 } from '../services/patients/historyStore';
 import type { VerifiedIdentification } from '../services/qr/identifyPatient';
 import type { AssessmentPatient } from './AssessmentScreen';
+import type { TransferIdentification } from './ReceivePatientScreen';
+import {
+  EvacuationBadge,
+  type EvacuationBadgeKind,
+} from '../components/evacuationBadges';
+import {
+  STAGE_TEXT,
+  loadEvacuationStatuses,
+  type EvacuationStatus,
+} from '../services/evacuation/status';
+import type { TransferPatient } from '../services/transfer/transferPackage';
 import {
   colors,
   fonts,
@@ -67,7 +80,8 @@ import { formatDateTime } from '../utils/format';
 export type Identification =
   | VerifiedIdentification
   | ManualIdentification
-  | FieldRegistration;
+  | FieldRegistration
+  | TransferIdentification;
 
 interface PatientIdentificationScreenProps {
   result: Identification;
@@ -76,6 +90,8 @@ interface PatientIdentificationScreenProps {
   onRegisterNew: (link: FieldLink) => void;
   /** Start Evacuation: opens the initial casualty assessment (screen 4). */
   onStartEvacuation: (patient: AssessmentPatient) => void;
+  /** Opens a previous-history entry as a read-only report. */
+  onOpenHistory: (entry: HistoryEntry) => void;
   /** Injected in tests; defaults to this tablet's history store. */
   historyStore?: PatientHistoryStore;
 }
@@ -156,6 +172,54 @@ function fromField(p: FieldPatient): PatientView {
     rank: p.rank,
     idLabel: 'Temporary ID',
     id: p.tempId,
+    unit: p.unit,
+    sex: p.sex,
+    age: p.age,
+    bloodGroup: p.bloodGroup,
+    rhFactor: p.rhFactor,
+    photo: null,
+  };
+}
+
+/** Status badges for one history row: handed over or not, and delivery. */
+function historyBadges(
+  status: EvacuationStatus | undefined,
+  received: boolean,
+): { kind: EvacuationBadgeKind; label: string }[] {
+  const badges: { kind: EvacuationBadgeKind; label: string }[] = [];
+  if (received) {
+    badges.push({
+      kind: 'RECEIVED_FROM',
+      label: 'Received from another tablet',
+    });
+  }
+  if (!status) {
+    return badges;
+  }
+  badges.push({ kind: status.stage, label: STAGE_TEXT[status.stage] });
+  if (status.transfer?.kind === 'RECEIVED') {
+    badges.push({
+      kind: 'RECEIVED_BY',
+      label: `Received by ${status.transfer.receiverId}`,
+    });
+  } else if (status.transfer?.kind === 'SENT') {
+    badges.push({
+      kind: 'SENT_UNCONFIRMED',
+      label: 'Sent to next team — not confirmed',
+    });
+  } else if (status.stage === 'HANDED_OVER') {
+    badges.push({ kind: 'NOT_SENT', label: 'Not yet sent to next team' });
+  }
+  return badges;
+}
+
+/** A received casualty this tablet's directory does not know. */
+function fromTransfer(p: TransferPatient): PatientView {
+  return {
+    name: p.name,
+    rank: p.rank,
+    idLabel: p.temporary ? 'Temporary ID' : 'Patient ID',
+    id: p.displayId,
     unit: p.unit,
     sex: p.sex,
     age: p.age,
@@ -287,6 +351,7 @@ export function PatientIdentificationScreen({
   onBack,
   onRegisterNew,
   onStartEvacuation,
+  onOpenHistory,
   historyStore,
 }: PatientIdentificationScreenProps) {
   const { width } = useWindowDimensions();
@@ -296,18 +361,23 @@ export function PatientIdentificationScreen({
   const field = result.method === 'FIELD';
   const manual = result.method === 'MANUAL';
   const scanned = result.method === 'QR';
+  const transferred = result.method === 'TRANSFER';
 
   const directoryPatient =
     result.method === 'MANUAL'
       ? result.patient
       : result.method === 'QR' && result.lookup.status === 'FOUND'
       ? result.lookup.patient
+      : result.method === 'TRANSFER'
+      ? result.directoryPatient
       : null;
   const view: PatientView | null =
     result.method === 'FIELD'
       ? fromField(result.patient)
       : directoryPatient
       ? fromDirectory(directoryPatient)
+      : result.method === 'TRANSFER'
+      ? fromTransfer(result.patient)
       : null;
 
   // Carried into Register New Patient only when this wristband / ID has no
@@ -328,16 +398,26 @@ export function PatientIdentificationScreen({
       ? [result.patient.tempId]
       : result.method === 'MANUAL'
       ? [result.patient.patientId, result.patient.displayId]
+      : result.method === 'TRANSFER'
+      ? [...result.patient.keys, result.patient.displayId]
       : [result.claims.patientId, directoryPatient?.displayId];
   const historyKeyString = historyKeys.filter(Boolean).join('|');
   const [history, setHistory] = useState<HistoryEntry[] | null>(null);
+  const [statuses, setStatuses] = useState<Record<string, EvacuationStatus>>(
+    {},
+  );
   useEffect(() => {
     let cancelled = false;
     (historyStore ?? getPatientHistoryStore())
       .listFor(historyKeyString.split('|'))
-      .then(entries => {
+      .then(async entries => {
         if (!cancelled) {
           setHistory(entries);
+        }
+        // Status of each evacuation, from its saved records.
+        const found = await loadEvacuationStatuses(entries.map(e => e.id));
+        if (!cancelled) {
+          setStatuses(found);
         }
       })
       .catch(() => {
@@ -369,7 +449,7 @@ export function PatientIdentificationScreen({
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <AppHeader
-        eyebrow="CASEVAC"
+        eyebrow={APP_BRAND}
         title="Patient Identification"
         onBack={onBack}
         right={
@@ -391,7 +471,18 @@ export function PatientIdentificationScreen({
               <StatusBadge label="Wristband not verified" tone="warning" />
             </>
           ) : null}
-          {field ? (
+          {transferred ? (
+            <>
+              <StatusBadge
+                label="Received from another tablet"
+                tone="success"
+              />
+              <StatusBadge label="Wristband not verified" tone="warning" />
+              {result.patient.temporary ? (
+                <StatusBadge label="Identity not verified" tone="warning" />
+              ) : null}
+            </>
+          ) : field ? (
             <>
               <StatusBadge label="Registered on this tablet" tone="warning" />
               <StatusBadge label="Identity not verified" tone="warning" />
@@ -408,6 +499,13 @@ export function PatientIdentificationScreen({
             tone="warning"
             title="Manual identification — wristband not verified"
             message={`This patient was found from the Patient ID typed in (${result.enteredId}). Confirm that the casualty is this person before recording care.`}
+          />
+        ) : null}
+        {transferred ? (
+          <Notice
+            tone="warning"
+            title="Received by transfer — confirm the casualty"
+            message={`This record came from ${result.receivedFrom}, who gave initial care. Their records below are read only. Confirm the casualty is this person (scan the wristband if they have one), then use Start Evacuation to record your care.`}
           />
         ) : null}
         {view ? (
@@ -476,34 +574,66 @@ export function PatientIdentificationScreen({
           ) : history.length === 0 ? (
             <Text style={styles.panelText}>No previous record found</Text>
           ) : (
-            history.map((entry, i) => (
-              <View
-                key={entry.id}
-                style={[
-                  styles.historyRow,
-                  i === history.length - 1 && styles.rowLast,
-                ]}
-                accessible
-                accessibilityLabel={`${formatDateTime(entry.at)}: ${
-                  entry.title
-                }${entry.detail ? `, ${entry.detail}` : ''}, by ${
-                  entry.recordedBy
-                }`}
-              >
-                <Text style={styles.historyWhen}>
-                  {formatDateTime(entry.at)}
-                </Text>
-                <View style={styles.historyBody}>
-                  <Text style={styles.historyTitle}>{entry.title}</Text>
-                  {entry.detail ? (
-                    <Text style={styles.historyDetail}>{entry.detail}</Text>
-                  ) : null}
-                  <Text style={styles.historyBy}>
-                    Recorded by {entry.recordedBy}
+            history.map((entry, i) => {
+              const status = statuses[entry.id];
+              const received = entry.id.startsWith('RCV-');
+              const badges = historyBadges(status, received);
+              return (
+                <Pressable
+                  key={entry.id}
+                  onPress={() => onOpenHistory(entry)}
+                  style={({ pressed }) => [
+                    styles.historyRow,
+                    i === history.length - 1 && styles.rowLast,
+                    pressed && styles.historyPressed,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${formatDateTime(entry.at)}: ${
+                    entry.title
+                  }${
+                    badges.length
+                      ? `, status ${badges.map(b => b.label).join(', ')}`
+                      : ''
+                  }${entry.detail ? `, ${entry.detail}` : ''}, by ${
+                    entry.recordedBy
+                  }`}
+                  accessibilityHint="Opens the report, read only"
+                >
+                  <Text style={styles.historyWhen}>
+                    {formatDateTime(entry.at)}
                   </Text>
-                </View>
-              </View>
-            ))
+                  <View style={styles.historyBody}>
+                    <Text style={styles.historyTitle}>{entry.title}</Text>
+                    {badges.length ? (
+                      <View style={styles.historyBadges}>
+                        {badges.map(b => (
+                          <EvacuationBadge
+                            key={b.label}
+                            kind={b.kind}
+                            label={b.label}
+                          />
+                        ))}
+                      </View>
+                    ) : null}
+                    {entry.detail ? (
+                      <Text style={styles.historyDetail}>{entry.detail}</Text>
+                    ) : null}
+                    <Text style={styles.historyBy}>
+                      Recorded by {entry.recordedBy}
+                    </Text>
+                  </View>
+                  <View style={styles.historyOpen}>
+                    <Icon name="lock" size={16} color={colors.textSecondary} />
+                    <Text style={styles.historyOpenText}>View</Text>
+                    <Icon
+                      name="chevronRight"
+                      size={20}
+                      color={colors.textSecondary}
+                    />
+                  </View>
+                </Pressable>
+              );
+            })
           )}
         </SectionPanel>
 
@@ -751,6 +881,26 @@ const styles = StyleSheet.create({
   },
   historyBy: {
     ...typography.helper,
+    color: colors.textSecondary,
+  },
+  historyPressed: {
+    backgroundColor: colors.surface,
+  },
+  historyBadges: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+    marginVertical: 2,
+  },
+  historyOpen: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    gap: 4,
+  },
+  historyOpenText: {
+    ...typography.caption,
+    fontWeight: '600',
     color: colors.textSecondary,
   },
   panelText: {

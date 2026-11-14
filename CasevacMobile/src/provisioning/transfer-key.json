@@ -1,0 +1,8 @@
+{
+  "format": "casevac.transfer-key",
+  "formatVersion": 1,
+  "generatedAt": "2026-11-14T08:02:54.821Z",
+  "notice": "DEVELOPMENT UNIT TRANSFER KEY bundled with the demo build — shared by every demo tablet so they can exchange casualty records. Replaced by npm run mobile:provision (dashboard key) and by any online sign-in. Not for operational use.",
+  "keyId": "dev-bundled-01",
+  "key": "M-ckoZqj34su-N5gyc3yDa2Hh69Yec_qJ3Yx6AAhq6M"
+}

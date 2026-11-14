@@ -254,6 +254,9 @@ export interface StaffInput {
   contactPhone?: string;
   status?: string;
   teamId?: string;
+  /** JPEG data URL produced by the form's photo field, or empty. */
+  photo?: string;
+  dateOfBirth?: string;
 }
 
 export interface ValidStaff {
@@ -267,6 +270,8 @@ export interface ValidStaff {
   designation: string;
   professionalRegistration: string;
   teamId: string | null;
+  photo: string | null;
+  dateOfBirth: string | null;
 }
 
 export function validateStaff(input: StaffInput, opts: { requireServiceNumber: boolean } = { requireServiceNumber: true }): ValidationResult<ValidStaff> {
@@ -296,6 +301,8 @@ export function validateStaff(input: StaffInput, opts: { requireServiceNumber: b
   const contactPhone = c.phone("contactPhone", input.contactPhone, "Contact phone");
   const status = c.choice("status", input.status, STATUS_OPTIONS, "ACTIVE", "Status");
   const teamId = clean(input.teamId) || null;
+  const photo = validatePhoto(c, input.photo);
+  const dateOfBirth = validateDateOfBirth(c, input.dateOfBirth);
   if (teamId && isRoleId(roleRaw) && !ROLE_DEFINITIONS[role].teamEligible) {
     c.errors.teamId = `${ROLE_DEFINITIONS[role].label} cannot be assigned to a medical team.`;
   }
@@ -303,7 +310,7 @@ export function validateStaff(input: StaffInput, opts: { requireServiceNumber: b
   if (!c.ok) return { ok: false, errors: c.errors };
   return {
     ok: true,
-    value: { fullName, serviceNumber, rank, unit, contactPhone, status, role, designation, professionalRegistration, teamId },
+    value: { fullName, serviceNumber, rank, unit, contactPhone, status, role, designation, professionalRegistration, teamId, photo, dateOfBirth },
   };
 }
 

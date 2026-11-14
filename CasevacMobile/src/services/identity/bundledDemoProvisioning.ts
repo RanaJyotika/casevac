@@ -23,6 +23,7 @@ import type {
   PatientIdentity,
   RhFactor,
   Sex,
+  StaffMember,
   TrustedIssuerKey,
   TrustStore,
 } from './types';
@@ -86,6 +87,42 @@ export interface ParsedDirectory {
   generatedAt: string | null;
   patients: PatientIdentity[];
   credentials: CredentialRecord[];
+  /** Clinicians for handover; absent in directories made before staff. */
+  staff?: StaffMember[];
+}
+
+function parseStaff(json: Json): StaffMember[] {
+  const staff: StaffMember[] = [];
+  for (const s of list(json.staff)) {
+    if (!isObject(s)) {
+      continue;
+    }
+    const staffId = str(s.staffId);
+    const displayId = str(s.displayId);
+    const fullName = str(s.fullName);
+    if (!staffId || !displayId || !fullName) {
+      continue;
+    }
+    const dob = str(s.dateOfBirth);
+    const photo = str(s.photo);
+    staff.push({
+      staffId,
+      displayId,
+      fullName,
+      rank: str(s.rank) ?? '',
+      unit: str(s.unit) ?? '',
+      role: str(s.role) ?? '',
+      roleLabel: str(s.roleLabel) ?? '',
+      designation: str(s.designation) ?? '',
+      dateOfBirth: dob && ISO_DATE.test(dob) ? dob : null,
+      contactPhone: str(s.contactPhone) ?? '',
+      photo:
+        photo && photo.length <= PHOTO_MAX_LENGTH && PHOTO.test(photo)
+          ? photo
+          : null,
+    });
+  }
+  return staff;
 }
 
 export function parseDirectory(json: unknown): ParsedDirectory {
@@ -162,7 +199,12 @@ export function parseDirectory(json: unknown): ParsedDirectory {
       revokedAt: str(c.revokedAt),
     });
   }
-  return { generatedAt: str(json.generatedAt), patients, credentials };
+  return {
+    generatedAt: str(json.generatedAt),
+    patients,
+    credentials,
+    staff: parseStaff(json),
+  };
 }
 
 export class StaticIdentityDirectory implements IdentityDirectory {
@@ -195,6 +237,26 @@ export class StaticIdentityDirectory implements IdentityDirectory {
   }
   async findPatientByDisplayId(displayId: string) {
     return this.byDisplayId.get(displayId.trim().toUpperCase()) ?? null;
+  }
+  async searchStaff(query: string, limit = 20): Promise<StaffMember[]> {
+    const words = query.trim().toUpperCase().split(/\s+/).filter(Boolean);
+    if (words.length === 0) {
+      return [];
+    }
+    return (this.data.staff ?? [])
+      .filter(s => {
+        const haystack = `${s.fullName} ${s.displayId}`.toUpperCase();
+        return words.every(w => haystack.includes(w));
+      })
+      .sort(
+        (a, b) =>
+          Number(b.role === 'MEDICAL_OFFICER') -
+          Number(a.role === 'MEDICAL_OFFICER'),
+      )
+      .slice(0, limit);
+  }
+  async staffCount() {
+    return this.data.staff?.length ?? 0;
   }
 }
 

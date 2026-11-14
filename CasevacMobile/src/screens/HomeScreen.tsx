@@ -11,8 +11,10 @@
  * Portrait (one column): actions, alerts, active evacuations, snapshot,
  * recent records — so the critical items stay near the top.
  *
- * Figures come from the DEMO dataset until evacuation records are stored on
- * the tablet; the top bar marks a demo session ("· Demo" under the medic).
+ * Figures come only from the evacuation records saved on this tablet
+ * (assessment + interventions & triage) — no demo casualties. An empty tablet
+ * shows empty lists and zero counts. The top bar still marks a demo sign-in
+ * account ("· Demo" under the medic).
  * Screens that do not exist yet (evacuation record, handover, sync) explain
  * that when opened — nothing pretends to work.
  */
@@ -25,14 +27,20 @@ import {
   CompanyBars,
   EvacuationRows,
   IdSearch,
+  InjuryBars,
   PillToggle,
   RecentRecordRows,
+  Icon,
   RegisterBar,
   ScanCard,
+  SecondaryButton,
   SnapshotTiles,
   TriageDonut,
 } from '../components';
-import { loadDashboardData, type DashboardData } from '../data/demoCasualties';
+import {
+  loadDashboardData,
+  type DashboardData,
+} from '../services/dashboard/localDashboard';
 import { useServerStatus } from '../services/connectivity/useServerStatus';
 import {
   activeEvacuationsBy,
@@ -54,6 +62,10 @@ interface HomeScreenProps {
   onPatientIdentified: (result: ManualIdentification) => void;
   /** Opens Register New Patient (optionally carrying a typed ID not found). */
   onRegisterPatient: (link: FieldLink) => void;
+  /** Receive a casualty record from another tablet (QR / Bluetooth). */
+  onReceivePatient: () => void;
+  /** Reopen an evacuation (in its patient tab) at its next unsaved step. */
+  onContinueEvacuation: (assessmentId: string) => void;
   onSignOut: () => void;
   /** Injected in tests; defaults to the directory downloaded at sign-in. */
   directory?: IdentityDirectory;
@@ -77,6 +89,8 @@ export function HomeScreen({
   onScanPatient,
   onPatientIdentified,
   onRegisterPatient,
+  onReceivePatient,
+  onContinueEvacuation,
   onSignOut,
   directory,
 }: HomeScreenProps) {
@@ -93,15 +107,17 @@ export function HomeScreen({
 
   useEffect(() => {
     let cancelled = false;
-    loadDashboardData(clinician.id).then(result => {
-      if (!cancelled) {
-        setData(result);
-      }
-    });
+    loadDashboardData()
+      .then(result => {
+        if (!cancelled) {
+          setData(result);
+        }
+      })
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
-  }, [clinician.id]);
+  }, []);
 
   const now = data ? new Date(data.loadedAt).getTime() : Date.now();
   const mine = useMemo(
@@ -161,6 +177,12 @@ export function HomeScreen({
         onRegisterNotFound={enteredId => onRegisterPatient({ enteredId })}
       />
       <RegisterBar onPress={() => onRegisterPatient({})} />
+      <SecondaryButton
+        title="Receive patient from another tablet"
+        icon={<Icon name="handover" size={20} color={colors.primary} />}
+        onPress={onReceivePatient}
+        accessibilityHint="Scan the QR or accept a Bluetooth transfer from the previous team's tablet"
+      />
     </View>
   );
 
@@ -180,8 +202,10 @@ export function HomeScreen({
     >
       <EvacuationRows
         rows={active.slice(0, ACTIVE_ROWS)}
-        onContinue={() =>
-          comingNext('Continue evacuation', 'The evacuation record screen')
+        onContinue={row =>
+          row.assessmentId
+            ? onContinueEvacuation(row.assessmentId)
+            : comingNext('Continue evacuation', 'Continuing this record')
         }
         emptyText="No active evacuations. Scan a tag to start one."
       />
@@ -227,6 +251,9 @@ export function HomeScreen({
       <SnapshotTiles total={stats.total} counts={stats.byTriage} />
       <View style={styles.donutBox}>
         <TriageDonut counts={stats.byTriage} />
+      </View>
+      <View style={styles.donutBox}>
+        <InjuryBars data={stats.byInjury} />
       </View>
       <View style={styles.donutBox}>
         <CompanyBars data={stats.byCompany} />

@@ -47,7 +47,8 @@ export interface AssessmentForm {
   /** HH:mm (24 h internally; shown as 12 h with AM/PM) */
   occurredTime: string | null;
   injuryTime: string | null;
-  mechanism: Mechanism | null;
+  /** Every mechanism that applies (multi-select). */
+  mechanisms: Mechanism[];
   mechanismOther: string;
   injuryCount: string;
   status: TriageCategory | null;
@@ -72,7 +73,7 @@ export const EMPTY_ASSESSMENT: AssessmentForm = {
   occurredDate: null,
   occurredTime: null,
   injuryTime: null,
-  mechanism: null,
+  mechanisms: [],
   mechanismOther: '',
   injuryCount: '',
   status: null,
@@ -106,7 +107,8 @@ export interface InitialAssessment {
     occurredAt: string | null;
     /** HH:mm or null. */
     injuryTime: string | null;
-    mechanism: string | null;
+    /** Every mechanism selected; "Other" is replaced by its description. */
+    mechanisms: string[];
     injuryCount: number | null;
     status: TriageCategory | null;
   };
@@ -228,7 +230,7 @@ export function validateAssessment(
       'Date and time of occurrence cannot be in the future.';
   }
 
-  if (form.mechanism === 'Other' && !form.mechanismOther.trim()) {
+  if (form.mechanisms.includes('Other') && !form.mechanismOther.trim()) {
     errors.mechanismOther = 'Describe the mechanism of injury.';
   }
   const injuryCount = number(errors, 'injuryCount', form.injuryCount, {
@@ -275,10 +277,10 @@ export function validateAssessment(
       incident: {
         occurredAt: occurred ? occurred.toISOString() : null,
         injuryTime: form.injuryTime,
-        mechanism:
-          form.mechanism === 'Other'
-            ? form.mechanismOther.trim()
-            : form.mechanism,
+        // Kept in the order of MOI_OPTIONS, whatever order they were tapped.
+        mechanisms: MOI_OPTIONS.filter(o => form.mechanisms.includes(o)).map(
+          o => (o === 'Other' ? form.mechanismOther.trim() : o),
+        ),
         injuryCount,
         status: form.status,
       },
@@ -312,8 +314,8 @@ export function summarise(a: InitialAssessment): string {
   if (a.incident.status) {
     parts.push(a.incident.status);
   }
-  if (a.incident.mechanism) {
-    parts.push(a.incident.mechanism);
+  if (a.incident.mechanisms.length) {
+    parts.push(a.incident.mechanisms.join(', '));
   }
   if (a.incident.injuryCount !== null) {
     parts.push(
@@ -356,6 +358,84 @@ function newId(): string {
     .toUpperCase()}`;
 }
 
+const str = (v: unknown): string => (typeof v === 'string' ? v : '');
+const strOrNull = (v: unknown): string | null =>
+  typeof v === 'string' && v ? v : null;
+const numOrNull = (v: unknown): number | null =>
+  typeof v === 'number' && Number.isFinite(v) ? v : null;
+
+/**
+ * Brings a stored record up to the current shape. Records saved by earlier
+ * builds (e.g. a single `incident.mechanism` instead of `mechanisms`) or with
+ * missing fields must still open — a missing value reads as not recorded,
+ * never as something invented.
+ */
+export function normaliseAssessment(raw: unknown): InitialAssessment | null {
+  if (!raw || typeof raw !== 'object') {
+    return null;
+  }
+  const r = raw as Record<string, any>;
+  if (typeof r.id !== 'string') {
+    return null;
+  }
+  const incident = (r.incident ?? {}) as Record<string, any>;
+  const march = (r.march ?? {}) as Record<string, any>;
+  const vitals = (r.vitals ?? {}) as Record<string, any>;
+  const mechanisms: string[] = Array.isArray(incident.mechanisms)
+    ? incident.mechanisms.filter((m: unknown) => typeof m === 'string' && m)
+    : typeof incident.mechanism === 'string' && incident.mechanism
+    ? [incident.mechanism]
+    : [];
+  const validKeys = new Set<string>(MARCH_ITEMS.map(i => i.key));
+  const status = ['RED', 'YELLOW', 'GREEN', 'BLACK'].includes(incident.status)
+    ? (incident.status as TriageCategory)
+    : null;
+  const se =
+    vitals.systemicExam === 'RECORDABLE' ||
+    vitals.systemicExam === 'NOT_RECORDABLE'
+      ? (vitals.systemicExam as SystemicExam)
+      : null;
+  return {
+    id: r.id,
+    patientKeys: Array.isArray(r.patientKeys)
+      ? r.patientKeys.filter((k: unknown) => typeof k === 'string')
+      : [],
+    patientLabel: str(r.patientLabel),
+    recordedAt: str(r.recordedAt),
+    recordedBy: str(r.recordedBy),
+    conscious: r.conscious === true,
+    incident: {
+      occurredAt: strOrNull(incident.occurredAt),
+      injuryTime: strOrNull(incident.injuryTime),
+      mechanisms,
+      injuryCount: numOrNull(incident.injuryCount),
+      status,
+    },
+    march: {
+      checked: Array.isArray(march.checked)
+        ? (march.checked.filter((k: unknown) =>
+            validKeys.has(k as string),
+          ) as MarchKey[])
+        : [],
+      additionalInjury: str(march.additionalInjury),
+    },
+    vitals: {
+      hr: numOrNull(vitals.hr),
+      rr: numOrNull(vitals.rr),
+      bpSys: numOrNull(vitals.bpSys),
+      bpDia: numOrNull(vitals.bpDia),
+      spo2: numOrNull(vitals.spo2),
+      temp: numOrNull(vitals.temp),
+      systemicExam: se,
+      rs: str(vitals.rs),
+      cvs: str(vitals.cvs),
+      pa: str(vitals.pa),
+      cns: str(vitals.cns),
+    },
+    additionalInfo: str(r.additionalInfo),
+  };
+}
+
 export class AssessmentStore {
   constructor(
     private readonly storage: KeyValueStorage = AsyncStorage,
@@ -366,10 +446,35 @@ export class AssessmentStore {
     try {
       const raw = await this.storage.getItem(STORAGE_KEY);
       const parsed = raw ? JSON.parse(raw) : [];
-      return Array.isArray(parsed) ? parsed : [];
+      return Array.isArray(parsed)
+        ? parsed
+            .map(normaliseAssessment)
+            .filter((a): a is InitialAssessment => a !== null)
+        : [];
     } catch {
       return [];
     }
+  }
+
+  /**
+   * Adds records received from another tablet, keeping their original IDs.
+   * Records already on this tablet are left as they are.
+   */
+  async importRecords(records: unknown[]): Promise<number> {
+    const all = await this.list();
+    const ids = new Set(all.map(r => r.id));
+    const add = records
+      .map(normaliseAssessment)
+      .filter((r): r is InitialAssessment => r !== null && !ids.has(r.id));
+    if (add.length) {
+      await this.storage.setItem(STORAGE_KEY, JSON.stringify([...all, ...add]));
+    }
+    return add.length;
+  }
+
+  /** The saved assessment behind a history entry (same id), if any. */
+  async get(id: string): Promise<InitialAssessment | null> {
+    return (await this.list()).find(a => a.id === id) ?? null;
   }
 
   /** Saves the assessment and adds it to the patient's history. */

@@ -19,6 +19,8 @@
  * DEMO SECURITY LEVEL: no device enrolment, no MFA, in-memory rate limiting.
  */
 import { randomBytes, randomInt, scryptSync, timingSafeEqual } from "node:crypto";
+import { sealPassword } from "../crypto/login-vault";
+import { buildTransferKeyFile, type TransferKeyFile } from "../crypto/transfer-key";
 import { getRepository, type RepositoryWriter } from "../data";
 import { newInternalId } from "../domain/ids";
 import { ROLE_DEFINITIONS } from "../domain/roles";
@@ -113,12 +115,14 @@ export async function issueMobileLogin(personId: string, actor: Actor): Promise<
 
     const password = generatePassword();
     const { hash, salt } = hashPassword(password);
+    const accountId = newInternalId();
     const account: MobileLoginAccount = {
-      id: newInternalId(),
+      id: accountId,
       personId,
       userId: person.displayId.toUpperCase(),
       passwordHash: hash,
       passwordSalt: salt,
+      passwordVault: sealPassword(password, accountId),
       status: "PENDING_FIRST_LOGIN",
       issuedAt: now,
       issuedBy: actor.id,
@@ -164,13 +168,16 @@ export async function revokeMobileLogin(personId: string, reason: string, actor:
 
 /* ------------------------------ Queries ------------------------------ */
 
-/** Account fields safe to show on the dashboard (no hash or salt). */
-export type MobileAccountView = Omit<MobileLoginAccount, "passwordHash" | "passwordSalt">;
+/** Account fields safe to show on the dashboard (no hash, salt or encrypted password). */
+export type MobileAccountView = Omit<MobileLoginAccount, "passwordHash" | "passwordSalt" | "passwordVault"> & {
+  /** An encrypted copy exists, so the admin can view it after verifying. */
+  passwordViewable: boolean;
+};
 
 function toView(account: MobileLoginAccount): MobileAccountView {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { passwordHash, passwordSalt, ...rest } = account;
-  return rest;
+  const { passwordHash, passwordSalt, passwordVault, ...rest } = account;
+  return { ...rest, passwordViewable: Boolean(passwordVault) };
 }
 
 export async function getMobileAccessForPerson(personId: string): Promise<{
@@ -217,6 +224,11 @@ export interface MobileProvisioning {
   directory: IdentityDirectory;
   /** Null when the dashboard has no QR signing key configured. */
   trustedKeys: TrustedIssuerKeys | null;
+  /**
+   * Unit key for tablet-to-tablet casualty handover (QR / Bluetooth).
+   * Null when not configured — tablets then cannot exchange records.
+   */
+  transferKey: TransferKeyFile | null;
 }
 
 export type MobileSignInResult =
@@ -379,13 +391,14 @@ export async function mobileSignIn(input: MobileSignInInput): Promise<MobileSign
   const provisioning: MobileProvisioning = {
     directory: await buildIdentityDirectory(),
     trustedKeys: buildTrustedIssuerKeys(),
+    transferKey: buildTransferKeyFile(),
   };
   await runTransaction({ id: userId, name: "Medic app" }, async (_tx, audit) => {
     await audit(
       "DIRECTORY_EXPORTED",
       "MOBILE_LOGIN",
       outcome.profile.accountId,
-      `Sent identity directory to ${userId}'s tablet (${provisioning.directory.patients.length} patients, ${provisioning.directory.credentials.length} credentials)`,
+      `Sent identity directory to ${userId}'s tablet (${provisioning.directory.patients.length} patients, ${provisioning.directory.credentials.length} credentials, ${provisioning.directory.staff.length} clinical staff)`,
     );
     return ok(null);
   });

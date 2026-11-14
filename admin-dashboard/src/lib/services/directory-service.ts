@@ -10,7 +10,8 @@
 import { getIssuerKey } from "../crypto/qr-issuer";
 import { getRepository } from "../data";
 import { QR_ISSUER } from "../domain/qr-format";
-import type { BloodGroup, CredentialStatus, RhFactor, Sex } from "../domain/types";
+import { ROLE_DEFINITIONS } from "../domain/roles";
+import type { BloodGroup, CredentialStatus, RhFactor, RoleId, Sex } from "../domain/types";
 
 export interface DirectoryPatient {
   /** Internal Person UUID — the patientId inside signed QR credentials. */
@@ -24,6 +25,29 @@ export interface DirectoryPatient {
   sex: Sex;
   /** ISO date (YYYY-MM-DD) or null; the tablet shows age from it. */
   dateOfBirth: string | null;
+  /** Small JPEG data URL or null. Delivered only via authenticated sign-in. */
+  photo: string | null;
+}
+
+/**
+ * A clinician a casualty can be handed over to (tablet handover screen):
+ * ACTIVE staff in a clinical role. Minimal fields for identifying the person
+ * receiving the casualty — no credentials or sign-in data.
+ */
+export interface DirectoryStaff {
+  staffId: string;
+  /** e.g. MED-00003 */
+  displayId: string;
+  fullName: string;
+  rank: string;
+  unit: string;
+  role: RoleId;
+  /** e.g. "Doctor / Medical Officer" */
+  roleLabel: string;
+  designation: string;
+  /** ISO date (YYYY-MM-DD) or null; the tablet shows age from it. */
+  dateOfBirth: string | null;
+  contactPhone: string;
   /** Small JPEG data URL or null. Delivered only via authenticated sign-in. */
   photo: string | null;
 }
@@ -49,6 +73,8 @@ export interface IdentityDirectory {
   patients: DirectoryPatient[];
   /** Every signed soldier credential, including REVOKED/REPLACED (revocation list). */
   credentials: DirectoryCredential[];
+  /** ACTIVE clinical staff a casualty can be handed over to. Medical officers first. */
+  staff: DirectoryStaff[];
 }
 
 export interface TrustedIssuerKeys {
@@ -103,6 +129,32 @@ export async function buildIdentityDirectory(): Promise<IdentityDirectory> {
   patients.sort((a, b) => a.displayId.localeCompare(b.displayId));
   directoryCredentials.sort((a, b) => a.issuedAt.localeCompare(b.issuedAt));
 
+  const staff: DirectoryStaff[] = [];
+  for (const p of persons) {
+    if (p.category === "SOLDIER" || p.status !== "ACTIVE") continue;
+    const role = ROLE_DEFINITIONS[p.staff.role];
+    if (!role?.clinical) continue;
+    staff.push({
+      staffId: p.id,
+      displayId: p.displayId,
+      fullName: p.fullName,
+      rank: p.rank,
+      unit: p.unit,
+      role: p.staff.role,
+      roleLabel: role.label,
+      designation: p.staff.designation,
+      dateOfBirth: p.staff.dateOfBirth ?? null,
+      contactPhone: p.contactPhone,
+      photo: p.staff.photo ?? null,
+    });
+  }
+  // Medical officers first, then by ID.
+  staff.sort(
+    (a, b) =>
+      Number(b.role === "MEDICAL_OFFICER") - Number(a.role === "MEDICAL_OFFICER") ||
+      a.displayId.localeCompare(b.displayId),
+  );
+
   return {
     format: "casevac.identity-directory",
     formatVersion: 2,
@@ -111,6 +163,7 @@ export async function buildIdentityDirectory(): Promise<IdentityDirectory> {
     notice: "DEMONSTRATION EXPORT — fictional records only. Unencrypted. Not for operational use.",
     patients,
     credentials: directoryCredentials,
+    staff,
   };
 }
 
