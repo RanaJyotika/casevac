@@ -2,7 +2,7 @@
 
 **Project:** Digital Evacuation Program (CASEVAC) · **App name:** Jeevan  
 **Focus:** Point A → Point B casualty documentation and clinical handover  
-**Current implementation direction:** QR-based identification; offline-first **Android tablet app, landscape-only**; lightweight web admin  
+**Current implementation direction:** QR-based identification; offline-first **Android tablet app, landscape-first with portrait support**; lightweight web admin  
 **Client UI update (12 Nov 2026):** tablet-first, landscape-only, operational dashboard UI — see `UI_DESIGN_GUIDELINES.md` v2  
 **Status:** Client-review baseline, not deployment approval
 
@@ -108,7 +108,7 @@ The AFMSF-21 form uses stage labels such as RAP/ADS and FAC/FSC in different sec
 - **Data volume:** long notes/photos may prevent compact direct transfer over some methods; photo inclusion is not a day-3 requirement.
 - **Clinical rules:** mandatory fields, priorities, stages, scoring and signature rules require clinical review.
 - **Security approval:** devices, radios, network services and personnel records require client policy confirmation.
-- **Landscape lock on Android 16+:** for apps targeting API 36 the OS ignores orientation locks on tablets; a temporary opt-out is declared but ends at API 37. Layouts must survive portrait, or the client's device management must lock rotation.
+- **Orientation:** since 13 Nov 2026 the app supports both landscape and portrait with no orientation lock (Android 16+ ignores locks on tablets anyway). If the client needs strict landscape, it must come from device management.
 - **Dashboard scope:** without server sync, dashboard figures cover only records on the tablet showing them.
 
 ## 10. Success definition for the 2–3-day sprint

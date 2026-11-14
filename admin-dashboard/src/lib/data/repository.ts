@@ -10,6 +10,7 @@ import type {
   AuditEvent,
   IdentityCredential,
   MedicalTeam,
+  MobileLoginAccount,
   PersonRecord,
   SequenceKey,
 } from "../domain/types";
@@ -28,6 +29,10 @@ export interface RepositoryReader {
   listTeams(): Promise<MedicalTeam[]>;
   getTeam(id: string): Promise<MedicalTeam | null>;
 
+  listMobileAccounts(): Promise<MobileLoginAccount[]>;
+  /** Looks up by normalised (upper-case) sign-in user ID. */
+  findMobileAccountByUserId(userId: string): Promise<MobileLoginAccount | null>;
+
   listAuditEvents(limit: number): Promise<AuditEvent[]>;
 }
 
@@ -40,6 +45,9 @@ export interface RepositoryWriter extends RepositoryReader {
   updateCredential(credential: IdentityCredential): Promise<void>;
   insertTeam(team: MedicalTeam): Promise<void>;
   updateTeam(team: MedicalTeam): Promise<void>;
+  /** Fails if the user ID is already used by a non-revoked account. */
+  insertMobileAccount(account: MobileLoginAccount): Promise<void>;
+  updateMobileAccount(account: MobileLoginAccount): Promise<void>;
   appendAudit(event: AuditEvent): Promise<void>;
 }
 

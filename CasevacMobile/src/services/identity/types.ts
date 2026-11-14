@@ -40,6 +40,7 @@ export interface CredentialRecord {
 
 export type BloodGroup = 'UNKNOWN' | 'A' | 'B' | 'AB' | 'O';
 export type RhFactor = 'UNKNOWN' | 'POSITIVE' | 'NEGATIVE';
+export type Sex = 'NOT_RECORDED' | 'MALE' | 'FEMALE';
 
 export interface PatientIdentity {
   /** Permanent patient identity (UUID). */
@@ -51,6 +52,11 @@ export interface PatientIdentity {
   unit: string;
   bloodGroup: BloodGroup;
   rhFactor: RhFactor;
+  sex: Sex;
+  /** ISO date (YYYY-MM-DD) or null; used to show age. */
+  dateOfBirth: string | null;
+  /** Small JPEG data URL from the dashboard, or null. Never from the QR. */
+  photo: string | null;
 }
 
 export interface DirectoryInfo {

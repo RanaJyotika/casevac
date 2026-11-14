@@ -23,6 +23,8 @@ const casualty = (
   triage: 'GREEN',
   stage: 'AWAITING_PICKUP',
   updatedAt: at(0),
+  injuredAt: at(0),
+  recordedBy: 'MED-00001',
   ...overrides,
 });
 
@@ -124,6 +126,9 @@ describe('lookupPatientById', () => {
     unit: '9 Demo Rifles',
     bloodGroup: 'O',
     rhFactor: 'POSITIVE',
+    sex: 'MALE',
+    dateOfBirth: null,
+    photo: null,
   };
   const directory = new StaticIdentityDirectory({
     generatedAt: '2026-11-12T09:00:00.000Z',

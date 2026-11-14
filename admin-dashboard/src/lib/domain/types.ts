@@ -42,6 +42,11 @@ export interface SoldierDetails {
   medicalCategory: string;
   identificationMarks: string;
   nextOfKin: NextOfKin;
+  /**
+   * Optional small ID photo (JPEG data URL, ≤ ~48 KB) shown to medics on the
+   * tablet. Never part of the QR. Absent on records created before photos.
+   */
+  photo?: string | null;
 }
 
 export interface StaffDetails {
@@ -118,6 +123,43 @@ export interface IdentityCredential {
   lastPrintedAt: string | null;
 }
 
+/**
+ * Mobile app sign-in account for a clinical staff member (medic / doctor).
+ *
+ * Lifecycle: the admin generates a user ID + password (PENDING_FIRST_LOGIN).
+ * The first sign-in must happen online at base camp; the tablet then caches a
+ * hashed copy so later sign-ins work offline (ACTIVATED). Revoking or
+ * resetting retires the account; tablets drop their cached copy the next
+ * time they reach the server.
+ */
+export type MobileAccountStatus = "PENDING_FIRST_LOGIN" | "ACTIVATED" | "REVOKED";
+
+export interface MobileLoginAccount {
+  /** Random internal UUID. Sent to the tablet so it can tell accounts apart. */
+  id: string;
+  personId: string;
+  /** Sign-in user ID typed on the tablet (normalised upper-case), e.g. MED-00001. */
+  userId: string;
+  /** scrypt hash of the password; the plaintext is shown to the admin once only. */
+  passwordHash: string;
+  passwordSalt: string;
+  status: MobileAccountStatus;
+  issuedAt: string;
+  issuedBy: string;
+  /** First successful online sign-in (offline copy saved on a tablet). */
+  firstLoginAt: string | null;
+  lastOnlineLoginAt: string | null;
+  /** Most recent offline sign-in reported by a tablet when it next came online. */
+  lastOfflineLoginAt: string | null;
+  onlineLoginCount: number;
+  offlineLoginCount: number;
+  /** Device label reported by the tablet at the last online sign-in. */
+  lastDevice: string | null;
+  revokedAt: string | null;
+  revokedBy: string | null;
+  revocationReason: string | null;
+}
+
 export interface MedicalTeam {
   id: string;
   /** Human-readable team reference, e.g. TEAM-001. */
@@ -149,14 +191,20 @@ export type AuditAction =
   | "ADMIN_SIGNED_OUT"
   | "DIRECTORY_EXPORTED"
   | "DEMO_DATA_SEEDED"
-  | "DEMO_DATA_RESET";
+  | "DEMO_DATA_RESET"
+  | "MOBILE_LOGIN_ISSUED"
+  | "MOBILE_LOGIN_RESET"
+  | "MOBILE_LOGIN_REVOKED"
+  | "MOBILE_LOGIN_ACTIVATED"
+  | "MOBILE_LOGIN_ONLINE"
+  | "MOBILE_LOGIN_FAILED";
 
 export interface AuditEvent {
   id: string;
   at: string;
   actorId: string;
   action: AuditAction;
-  entityType: "PERSON" | "CREDENTIAL" | "TEAM" | "SYSTEM";
+  entityType: "PERSON" | "CREDENTIAL" | "TEAM" | "SYSTEM" | "MOBILE_LOGIN";
   entityId: string | null;
   /** Short, non-sensitive description (IDs only; no medical details). */
   summary: string;
@@ -170,6 +218,8 @@ export interface DatabaseSnapshot {
   persons: PersonRecord[];
   credentials: IdentityCredential[];
   teams: MedicalTeam[];
+  /** Added after schema v1 shipped; older files load with an empty list. */
+  mobileAccounts: MobileLoginAccount[];
   auditLog: AuditEvent[];
 }
 

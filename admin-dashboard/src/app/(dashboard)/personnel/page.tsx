@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Search } from "lucide-react";
-import { Badge, CredentialStatusBadge, RecordStatusBadge } from "@/components/ui/badge";
+import { Badge, CredentialStatusBadge, MobileLoginStatusBadge, RecordStatusBadge } from "@/components/ui/badge";
 import { buttonClasses, LinkButton } from "@/components/ui/button";
 import { EmptyState, PageHeader, Panel, Table, Td, Th } from "@/components/ui/layout";
 import { CATEGORY_LABELS, ROLE_DEFINITIONS, ROLE_IDS, isRoleId } from "@/lib/domain/roles";
 import type { PersonCategory, RecordStatus } from "@/lib/domain/types";
 import { formatDate, param } from "@/lib/format";
+import { listLiveMobileAccounts } from "@/lib/services/mobile-access-service";
 import { listPersonnel, listUnits } from "@/lib/services/personnel-service";
 
 export const metadata: Metadata = { title: "Personnel" };
@@ -25,7 +26,11 @@ export default async function PersonnelPage({ searchParams }: PageProps<"/person
   const status = (statusRaw === "ACTIVE" || statusRaw === "INACTIVE" ? statusRaw : "") as RecordStatus | "";
   const filtered = Boolean(q || category || role || unit || status);
 
-  const [rows, units] = await Promise.all([listPersonnel({ q, category, role, unit, status }), listUnits()]);
+  const [rows, units, mobileAccounts] = await Promise.all([
+    listPersonnel({ q, category, role, unit, status }),
+    listUnits(),
+    listLiveMobileAccounts(),
+  ]);
 
   return (
     <>
@@ -139,6 +144,11 @@ export default async function PersonnelPage({ searchParams }: PageProps<"/person
                   <Td className="font-mono text-[13px] text-ink-2">{person.serviceNumber}</Td>
                   <Td>
                     {person.category === "SOLDIER" ? "Soldier" : ROLE_DEFINITIONS[person.staff.role].label}
+                    {person.category !== "SOLDIER" && ROLE_DEFINITIONS[person.staff.role].permissions.includes("clinical.record") ? (
+                      <div className="mt-1">
+                        <MobileLoginStatusBadge status={mobileAccounts.get(person.id)?.status ?? null} />
+                      </div>
+                    ) : null}
                   </Td>
                   <Td className="text-ink-2">{person.unit}</Td>
                   <Td>

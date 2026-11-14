@@ -8,15 +8,22 @@ import {
   reissueQrAction,
   revokeQrAction,
 } from "@/app/actions/identity-actions";
+import { issueMobileLoginAction, revokeMobileLoginAction } from "@/app/actions/mobile-access-actions";
+import { IssueMobileLoginButton } from "@/components/mobile/issue-mobile-login";
 import { QrImage } from "@/components/qr/qr-image";
 import { ConfirmActionButton, InlineActionButton } from "@/components/ui/action-form";
-import { Badge, CredentialStatusBadge, RecordStatusBadge } from "@/components/ui/badge";
+import { Badge, CredentialStatusBadge, MobileLoginStatusBadge, RecordStatusBadge } from "@/components/ui/badge";
 import { buttonClasses, LinkButton } from "@/components/ui/button";
 import { Alert, DefinitionGrid, EmptyState, PageHeader, Panel, Table, Td, Th } from "@/components/ui/layout";
 import { CATEGORY_LABELS, PERMISSIONS, ROLE_DEFINITIONS } from "@/lib/domain/roles";
 import type { IdentityCredential, SoldierRecord, StaffRecord } from "@/lib/domain/types";
 import { BLOOD_GROUP_OPTIONS, RH_OPTIONS, SEX_OPTIONS } from "@/lib/domain/validation";
 import { formatDate, formatDateTime, param } from "@/lib/format";
+import {
+  getMobileAccessForPerson,
+  mobileAccessProblem,
+  type MobileAccountView,
+} from "@/lib/services/mobile-access-service";
 import { getPersonProfile } from "@/lib/services/personnel-service";
 
 export const metadata: Metadata = { title: "Personnel profile" };
@@ -28,6 +35,7 @@ const NOTICES: Record<string, string> = {
   "qr-reissued": "QR reissued. The previous code no longer resolves.",
   "qr-revoked": "QR revoked. This soldier has no active QR until a new one is issued.",
   "wristband-issued": "Wristband marked as issued.",
+  "mobile-revoked": "Mobile sign-in revoked. Tablets delete their offline copy the next time they connect.",
 };
 
 export default async function PersonProfilePage({ params, searchParams }: PageProps<"/personnel/[id]">) {
@@ -38,6 +46,7 @@ export default async function PersonProfilePage({ params, searchParams }: PagePr
   const { person, credentials, teams } = profile;
   const notice = NOTICES[param(sp.notice)];
   const isSoldier = person.category === "SOLDIER";
+  const mobileAccess = isSoldier ? null : await getMobileAccessForPerson(person.id);
 
   return (
     <>
@@ -61,7 +70,7 @@ export default async function PersonProfilePage({ params, searchParams }: PagePr
       {isSoldier ? (
         <SoldierProfile person={person} credentials={credentials} />
       ) : (
-        <StaffProfile person={person} teams={teams.map(t => ({ id: t.id, label: `${t.teamCode} — ${t.name}`, leader: t.leaderId === person.id, active: t.status === "ACTIVE" }))} />
+        <StaffProfile person={person} mobileAccess={mobileAccess ?? { current: null, history: [] }} teams={teams.map(t => ({ id: t.id, label: `${t.teamCode} — ${t.name}`, leader: t.leaderId === person.id, active: t.status === "ACTIVE" }))} />
       )}
     </>
   );
@@ -94,6 +103,15 @@ function SoldierProfile({ person, credentials }: { person: SoldierRecord; creden
         >
           <DefinitionGrid
             items={[
+              {
+                label: "ID photo",
+                value: s.photo ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- stored data URL
+                  <img src={s.photo} alt={`ID photo of ${person.fullName}`} className="size-24 rounded-md border border-line object-cover" />
+                ) : (
+                  ""
+                ),
+              },
               { label: "Patient ID (display)", value: person.displayId, mono: true },
               { label: "Service number", value: person.serviceNumber, mono: true },
               { label: "Rank", value: person.rank },
@@ -252,9 +270,11 @@ function SoldierProfile({ person, credentials }: { person: SoldierRecord; creden
 function StaffProfile({
   person,
   teams,
+  mobileAccess,
 }: {
   person: StaffRecord;
   teams: { id: string; label: string; leader: boolean; active: boolean }[];
+  mobileAccess: { current: MobileAccountView | null; history: MobileAccountView[] };
 }) {
   const role = ROLE_DEFINITIONS[person.staff.role];
   return (
@@ -269,13 +289,14 @@ function StaffProfile({
             { label: "Unit / facility", value: person.unit },
             { label: "Professional registration", value: person.staff.professionalRegistration ? `${person.staff.professionalRegistration} (not verified)` : "" },
             { label: "Contact phone", value: person.contactPhone },
-            { label: "Sign-in credentials", value: "Not issued (MVP)" },
+            { label: "Medic app sign-in", value: <MobileLoginStatusBadge status={mobileAccess.current?.status ?? null} /> },
             { label: "Registered", value: `${formatDateTime(person.registeredAt)} by ${person.registeredBy}` },
             { label: "Last updated", value: formatDateTime(person.updatedAt) },
           ]}
         />
       </Panel>
       <div className="flex min-w-0 flex-[1_1_300px] flex-col gap-4">
+        <MobileLoginPanel person={person} current={mobileAccess.current} history={mobileAccess.history} />
         <Panel title="Role & permissions" bodyClassName="flex flex-col gap-3 p-5">
           <p className="text-sm">
             <span className="font-semibold">{role.label}</span>{" "}
@@ -315,5 +336,107 @@ function StaffProfile({
         </Panel>
       </div>
     </div>
+  );
+}
+
+function MobileLoginPanel({
+  person,
+  current,
+  history,
+}: {
+  person: StaffRecord;
+  current: MobileAccountView | null;
+  history: MobileAccountView[];
+}) {
+  const role = ROLE_DEFINITIONS[person.staff.role];
+  if (!role.permissions.includes("clinical.record")) {
+    return (
+      <Panel title="Medic app sign-in">
+        <p className="px-5 py-4 text-sm text-muted">{role.label} does not use the medic app.</p>
+      </Panel>
+    );
+  }
+  const problem = mobileAccessProblem(person);
+  const label = person.displayId;
+  const revokedCount = history.filter(a => a.status === "REVOKED").length;
+
+  return (
+    <Panel
+      title="Medic app sign-in"
+      actions={<MobileLoginStatusBadge status={current?.status ?? null} />}
+      footer={
+        <>
+          First sign-in must be online at base camp; the tablet then keeps a hashed copy for offline sign-in. Offline
+          sign-ins are reported here when the tablet next connects.
+        </>
+      }
+      bodyClassName="flex flex-col gap-4 p-5"
+    >
+      {current ? (
+        <>
+          {current.status === "PENDING_FIRST_LOGIN" ? (
+            <Alert tone="warn" title="Not used yet">
+              Credentials were issued but the medic has not signed in on a tablet yet. Offline sign-in works only after
+              that first online sign-in.
+            </Alert>
+          ) : null}
+          <DefinitionGrid
+            items={[
+              { label: "User ID", value: current.userId, mono: true },
+              { label: "Issued", value: `${formatDateTime(current.issuedAt)} by ${current.issuedBy}` },
+              { label: "First sign-in (online)", value: formatDateTime(current.firstLoginAt) },
+              { label: "Last online sign-in", value: formatDateTime(current.lastOnlineLoginAt) },
+              {
+                label: "Last offline sign-in",
+                value: current.lastOfflineLoginAt
+                  ? `${formatDateTime(current.lastOfflineLoginAt)} (${current.offlineLoginCount} total)`
+                  : "None reported",
+              },
+              { label: "Online sign-ins", value: String(current.onlineLoginCount) },
+              { label: "Last device", value: current.lastDevice ?? "" },
+            ]}
+          />
+        </>
+      ) : problem ? (
+        <p className="text-sm text-muted">{problem}</p>
+      ) : (
+        <p className="text-sm text-ink-2">
+          No sign-in issued. Generate a user ID and password and hand them to {person.fullName}.
+        </p>
+      )}
+      {/*
+        One issue/reset button in a fixed position. Issuing a login re-renders
+        this panel (no account → account); keeping the button in the same place
+        keeps its dialog open, so the one-time password stays visible.
+      */}
+      {current || !problem ? (
+        <div className="flex flex-wrap gap-2">
+          <IssueMobileLoginButton
+            action={issueMobileLoginAction.bind(null, person.id)}
+            triggerLabel={current ? "Reset password" : "Generate app login"}
+            triggerVariant={current ? "secondary" : "primary"}
+            isReset={Boolean(current)}
+            personLabel={label}
+          />
+          {current ? (
+            <ConfirmActionButton
+              action={revokeMobileLoginAction.bind(null, person.id)}
+              triggerLabel="Revoke sign-in"
+              triggerVariant="danger"
+              title={`Revoke mobile sign-in for ${label}?`}
+              description="Online sign-in stops immediately. A tablet that is offline can still use its saved copy until it next connects to the server, when the copy is deleted."
+              confirmLabel="Revoke"
+              confirmVariant="danger"
+              reasonField={{ label: "Reason", placeholder: "e.g. Tablet lost, posted out" }}
+            />
+          ) : null}
+        </div>
+      ) : null}
+      {revokedCount ? (
+        <p className="text-xs text-muted">
+          {revokedCount} earlier {revokedCount === 1 ? "sign-in was" : "sign-ins were"} revoked or reset.
+        </p>
+      ) : null}
+    </Panel>
   );
 }

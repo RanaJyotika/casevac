@@ -1,9 +1,11 @@
 # CASEVAC — Dashboard ↔ Mobile integration contract (draft)
 
-Status: **offline verification works; live provisioning does not exist yet.** Phones verify the dashboard's
-digital signature on a wristband QR without any network. Patient details and revocations reach a phone only
-through a *demo* provisioning step (`npm run mobile:provision`) that writes files into the app source. There is no
-backend, device enrolment or encrypted directory download yet.
+Status: **offline verification works; provisioning is delivered at medic sign-in.** Phones verify the
+dashboard's digital signature on a wristband QR without any network. The QR carries only random IDs and a
+signature, so a stray scan reveals nothing. Patient details, revocations and the trusted signing key reach a
+tablet with every successful **online medic sign-in** (`POST /api/mobile/auth/login` → `provisioning`, see §4a)
+and are saved on the tablet for offline sign-ins and scans. The bundled demo files (§4) remain only as the
+fallback before a tablet's first online sign-in. Not yet: encrypted storage on the tablet, device enrolment.
 
 ## 1. Shared identifiers
 
@@ -99,11 +101,29 @@ credential, including revoked and replaced ones, so phones can reject them offli
 These files are bundled, unencrypted and editable by anyone who can rebuild the app. They stand in for real
 provisioning and are **not authoritative**. Use fictional records only: the files are committed with the app.
 
+## 4a. Provisioning at medic sign-in
+
+A successful `POST /api/mobile/auth/login` (user ID + password issued on the dashboard) returns, alongside the
+medic's profile:
+
+```json
+"provisioning": {
+  "directory":   { "format": "casevac.identity-directory", "formatVersion": 2, "patients": [...], "credentials": [...] },
+  "trustedKeys": { "format": "casevac.trusted-issuer-keys", "formatVersion": 1, "keys": [...] }
+}
+```
+
+Same formats as §4. Failed sign-ins never include it. Each delivery is audit-logged (`DIRECTORY_EXPORTED`). The
+app (`src/services/identity/provisioningStore.ts`) validates it, saves it in app-private storage, and uses it
+for scanning and manual ID lookup; an offline sign-in reloads the last saved copy. A malformed download, or one
+without a usable key, is rejected whole and the previous copy stays in use.
+
 ## 5. Still needed before real use
 
 1. **Backend** (future MongoDB service) implementing `CasevacRepository` and serving the directory + trusted keys.
-2. **Device enrolment & medic authentication**: approved devices download the directory while online.
-3. **Encryption** of the cached directory on the phone (key handling per client policy).
-4. **Refresh/expiry policy**: how often phones refresh, how revocations propagate, what to show when stale.
-5. **Mobile**: replace `bundledDemoProvisioning.ts` with a backend-provisioned `TrustStore` /
-   `IdentityDirectory` (interfaces in `src/services/identity/types.ts`). Screens do not change.
+2. **Device enrolment**: today any tablet with valid medic credentials receives the directory (§4a); approved
+   devices only, per client policy.
+3. **Encryption** of the saved directory on the tablet (hardware-backed key, e.g. Android Keystore).
+4. **Refresh/expiry policy**: the directory refreshes on each online sign-in; decide a background refresh and
+   how long a stale directory (and its revocation list) may be trusted.
+5. ~~Mobile: backend-provisioned `TrustStore` / `IdentityDirectory`~~ — done (§4a).

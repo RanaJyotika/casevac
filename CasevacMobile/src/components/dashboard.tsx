@@ -1,544 +1,228 @@
 /**
- * Home dashboard building blocks (UI_DESIGN_GUIDELINES.md §9–10).
- * Charts are drawn with plain Views: no chart dependency, no animation,
- * every value printed as a number, triage colour always paired with its label.
+ * Home charts (UI_DESIGN_GUIDELINES.md §9–10): triage donut (react-native-svg)
+ * and casualties by company (plain Views). No animation; every value printed
+ * as a number; triage colour always paired with its word.
  */
 import React from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import Svg, { Circle, G } from 'react-native-svg';
 import {
-  Pressable,
-  StyleProp,
-  StyleSheet,
-  Text,
-  View,
-  ViewStyle,
-} from 'react-native';
-import {
-  STAGE_LABEL,
-  STAGE_ORDER,
   TRIAGE_ORDER,
-  type CasualtySummary,
   type CompanyBreakdown,
   type TriageCounts,
 } from '../services/dashboard/dashboardStats';
-import {
-  colors,
-  fonts,
-  layout,
-  radius,
-  spacing,
-  triage,
-  typography,
-} from '../theme/tokens';
-import type { EvacuationStage, TriageCategory } from '../types';
-import { formatTime } from '../utils/format';
-import { Chevron } from './icons';
+import { colors, spacing, triage, typography } from '../theme/tokens';
+import type { TriageCategory } from '../types';
 
-/* ----------------------------- Quick action ----------------------------- */
+/** Short meanings used on Home (pills, tiles and the donut legend). */
+export const TRIAGE_SHORT: Record<TriageCategory, string> = {
+  RED: 'Critical',
+  YELLOW: 'Serious',
+  GREEN: 'Minor',
+  BLACK: 'Expectant',
+};
 
-interface QuickActionTileProps {
-  title: string;
-  subtitle: string;
-  icon: React.ReactNode;
-  variant?: 'primary' | 'secondary';
-  onPress: () => void;
-  accessibilityHint?: string;
-}
+const WORD: Record<TriageCategory, string> = {
+  RED: 'Red',
+  YELLOW: 'Yellow',
+  GREEN: 'Green',
+  BLACK: 'Black',
+};
 
-export function QuickActionTile({
-  title,
-  subtitle,
-  icon,
-  variant = 'secondary',
-  onPress,
-  accessibilityHint,
-}: QuickActionTileProps) {
-  const primary = variant === 'primary';
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={title}
-      accessibilityHint={accessibilityHint ?? subtitle}
-      style={({ pressed }) => [
-        styles.tile,
-        primary ? styles.tilePrimary : styles.tileSecondary,
-        pressed &&
-          (primary ? styles.tilePrimaryPressed : styles.tileSecondaryPressed),
-      ]}
-    >
-      <View style={[styles.tileIcon, primary && styles.tileIconPrimary]}>
-        {icon}
-      </View>
-      <View style={styles.tileText}>
-        <Text
-          style={[styles.tileTitle, primary && styles.onPrimary]}
-          numberOfLines={1}
-        >
-          {title}
-        </Text>
-        <Text
-          style={[styles.tileSubtitle, primary && styles.onPrimaryMuted]}
-          numberOfLines={2}
-        >
-          {subtitle}
-        </Text>
-      </View>
-      <Chevron color={primary ? colors.onPrimary : colors.textSecondary} />
-    </Pressable>
-  );
-}
-
-/* ----------------------------- Summary card ----------------------------- */
-
-interface SummaryCardProps {
-  label: string;
-  value: number;
-  /** Triage cards show the category colour bar, label and meaning. */
-  category?: TriageCategory;
-  style?: StyleProp<ViewStyle>;
-}
-
-export function SummaryCard({
-  label,
-  value,
-  category,
-  style,
-}: SummaryCardProps) {
-  const t = category ? triage[category] : null;
-  return (
-    <View
-      style={[styles.card, style]}
-      accessible
-      accessibilityLabel={`${t ? `${t.label}, ${label}` : label}: ${value}`}
-    >
-      {t ? (
-        <View style={[styles.cardStrip, { backgroundColor: t.fill }]} />
-      ) : null}
-      <Text style={styles.cardValue}>{value}</Text>
-      {t ? (
-        <Text style={styles.cardLabel} numberOfLines={2}>
-          {t.label}
-          <Text style={styles.cardCaption}>{`\n${label}`}</Text>
-        </Text>
-      ) : (
-        <Text style={styles.cardLabel} numberOfLines={2}>
-          {label}
-        </Text>
-      )}
-    </View>
-  );
-}
-
-/* ------------------------------ Chart card ------------------------------ */
-
-interface ChartCardProps {
-  title: string;
-  meta?: string;
-  /** Shown on the right of the header instead of `meta` (e.g. a legend). */
-  headerRight?: React.ReactNode;
-  children: React.ReactNode;
-  style?: StyleProp<ViewStyle>;
-}
-
-export function ChartCard({
-  title,
-  meta,
-  headerRight,
-  children,
-  style,
-}: ChartCardProps) {
-  return (
-    <View style={[styles.chartCard, style]}>
-      <View style={styles.chartHeader}>
-        <Text style={styles.chartTitle} accessibilityRole="header">
-          {title}
-        </Text>
-        {headerRight ??
-          (meta ? <Text style={styles.chartMeta}>{meta}</Text> : null)}
-      </View>
-      {children}
-    </View>
-  );
-}
-
-/* ----------------------------- Triage badge ----------------------------- */
-
-export function TriageBadge({ category }: { category: TriageCategory }) {
-  const t = triage[category];
-  return (
-    <View
-      style={[styles.triageBadge, { backgroundColor: t.fill }]}
-      accessible
-      accessibilityLabel={`Triage ${t.label}, ${t.meaning}`}
-    >
-      <Text style={[styles.triageBadgeText, { color: t.onFill }]}>
-        {t.label}
-      </Text>
-    </View>
-  );
-}
-
-export function TriageLegend() {
-  return (
-    <View style={styles.legend} accessibilityRole="text">
-      {TRIAGE_ORDER.map(c => (
-        <View key={c} style={styles.legendItem}>
-          <View
-            style={[styles.legendSwatch, { backgroundColor: triage[c].fill }]}
-          />
-          <Text style={styles.legendText}>{triage[c].label}</Text>
-        </View>
-      ))}
-    </View>
-  );
-}
-
-/* ---------------------- Company stacked bar chart ----------------------- */
-
-export function CompanyStackedBarChart({ data }: { data: CompanyBreakdown[] }) {
-  const max = Math.max(1, ...data.map(d => d.total));
-  return (
-    <View style={styles.chartBody}>
-      {data.map(d => {
-        const breakdown = TRIAGE_ORDER.map(
-          c => `${triage[c].label} ${d.counts[c]}`,
-        ).join(', ');
-        return (
-          <View
-            key={d.company}
-            style={styles.barRow}
-            accessible
-            accessibilityLabel={`${d.company} company: ${d.total} casualties. ${breakdown}`}
-          >
-            <Text style={styles.barLabel} numberOfLines={1}>
-              {d.company}
-            </Text>
-            <View style={styles.barTrack}>
-              {d.total > 0 ? (
-                <View style={[styles.barFill, { flex: d.total }]}>
-                  {TRIAGE_ORDER.filter(c => d.counts[c] > 0).map(c => (
-                    <View
-                      key={c}
-                      style={[
-                        styles.segment,
-                        { flex: d.counts[c], backgroundColor: triage[c].fill },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.segmentText,
-                          { color: triage[c].onFill },
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {d.counts[c]}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              ) : null}
-              {max - d.total > 0 ? (
-                <View style={{ flex: max - d.total }} />
-              ) : null}
-            </View>
-            <Text style={styles.barTotal}>{d.total}</Text>
-          </View>
-        );
-      })}
-    </View>
-  );
-}
-
-/* ------------------------ Triage horizontal bars ------------------------ */
-
-export function TriageBarChart({ counts }: { counts: TriageCounts }) {
-  const max = Math.max(1, ...TRIAGE_ORDER.map(c => counts[c]));
-  return (
-    <View style={styles.chartBody}>
-      {TRIAGE_ORDER.map(c => {
-        const t = triage[c];
-        return (
-          <View
-            key={c}
-            style={styles.triageRow}
-            accessible
-            accessibilityLabel={`${t.label}, ${t.meaning}: ${counts[c]}`}
-          >
-            <View style={styles.triageLabelCol}>
-              <Text style={styles.triageLabel}>{t.label}</Text>
-              <Text style={styles.triageMeaning} numberOfLines={1}>
-                {t.meaning}
-              </Text>
-            </View>
-            <View style={styles.barTrack}>
-              {counts[c] > 0 ? (
-                <View
-                  style={[
-                    styles.triageFill,
-                    { flex: counts[c], backgroundColor: t.fill },
-                  ]}
-                />
-              ) : null}
-              {max - counts[c] > 0 ? (
-                <View style={{ flex: max - counts[c] }} />
-              ) : null}
-            </View>
-            <Text style={styles.barTotal}>{counts[c]}</Text>
-          </View>
-        );
-      })}
-    </View>
-  );
-}
-
-/* --------------------------- Evacuation flow ---------------------------- */
-
-export function EvacuationFlow({
-  byStage,
+/**
+ * Triage distribution: donut (total in the centre) beside a legend that
+ * prints each colour's word, meaning, count and share.
+ */
+export function TriageDonut({
+  counts,
+  size = 156,
 }: {
-  byStage: Record<EvacuationStage, number>;
+  counts: TriageCounts;
+  size?: number;
 }) {
-  return (
-    <View style={styles.flow}>
-      {STAGE_ORDER.map((stage, index) => (
-        <React.Fragment key={stage}>
-          {index > 0 ? (
-            <Text style={styles.flowArrow} importantForAccessibility="no">
-              ↓
-            </Text>
-          ) : null}
-          <View
-            style={[
-              styles.flowStep,
-              stage === 'COMPLETED' && styles.flowStepDone,
-            ]}
-            accessible
-            accessibilityLabel={`Step ${index + 1}, ${STAGE_LABEL[stage]}: ${
-              byStage[stage]
-            }`}
-          >
-            <Text style={styles.flowIndex}>{index + 1}</Text>
-            <Text style={styles.flowLabel} numberOfLines={1}>
-              {STAGE_LABEL[stage]}
-            </Text>
-            <Text style={styles.flowValue}>{byStage[stage]}</Text>
-          </View>
-        </React.Fragment>
-      ))}
-    </View>
+  const total = TRIAGE_ORDER.reduce((sum, c) => sum + counts[c], 0);
+  const stroke = 26;
+  const r = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * r;
+  const centre = size / 2;
+  const present = TRIAGE_ORDER.filter(c => counts[c] > 0);
+  // A thin gap between segments keeps adjacent colours distinct.
+  const gap = present.length > 1 ? 2 : 0;
+
+  let offset = 0;
+  const segments = present.map(c => {
+    const length = (circumference * counts[c]) / total;
+    const segment = { c, length, offset };
+    offset += length;
+    return segment;
+  });
+
+  const pct = (n: number) =>
+    total === 0 ? '0%' : `${Math.round((n / total) * 100)}%`;
+  const summary = TRIAGE_ORDER.map(c => `${triage[c].label} ${counts[c]}`).join(
+    ', ',
   );
-}
 
-/* ------------------------ Recent activity table ------------------------- */
-
-const COLUMNS = [
-  { key: 'id', title: 'Casualty ID', flex: 1.25 },
-  { key: 'name', title: 'Name', flex: 1.6 },
-  { key: 'company', title: 'Company', flex: 1 },
-  { key: 'triage', title: 'Triage', flex: 1 },
-  { key: 'status', title: 'Status', flex: 1.25 },
-  { key: 'time', title: 'Updated', flex: 0.8 },
-] as const;
-
-export function RecentActivityTable({ rows }: { rows: CasualtySummary[] }) {
-  if (rows.length === 0) {
-    return (
-      <Text style={styles.empty}>No casualty activity on this tablet yet.</Text>
-    );
-  }
   return (
-    <View style={styles.table}>
-      <View style={[styles.tableRow, styles.tableHead]}>
-        {COLUMNS.map(col => (
-          <Text
-            key={col.key}
-            style={[styles.th, { flex: col.flex }]}
-            numberOfLines={1}
-          >
-            {col.title}
-          </Text>
+    <View style={styles.body}>
+      <View
+        style={[styles.donut, { width: size, height: size }]}
+        accessible
+        accessibilityRole="image"
+        accessibilityLabel={`${total} casualties by triage colour: ${summary}`}
+      >
+        <Svg width={size} height={size}>
+          <G rotation={-90} origin={`${centre}, ${centre}`}>
+            <Circle
+              cx={centre}
+              cy={centre}
+              r={r}
+              stroke={colors.surfaceStrong}
+              strokeWidth={stroke}
+              fill="none"
+            />
+            {segments.map(s => (
+              <Circle
+                key={s.c}
+                cx={centre}
+                cy={centre}
+                r={r}
+                stroke={triage[s.c].fill}
+                strokeWidth={stroke}
+                strokeDasharray={`${Math.max(
+                  s.length - gap,
+                  0,
+                )} ${circumference}`}
+                strokeDashoffset={-s.offset}
+                fill="none"
+              />
+            ))}
+          </G>
+        </Svg>
+        <View style={styles.centre} pointerEvents="none">
+          <Text style={styles.total}>{total}</Text>
+          <Text style={styles.caption}>Total</Text>
+        </View>
+      </View>
+      <View style={styles.legend}>
+        <Text style={styles.legendTitle}>Triage Distribution</Text>
+        {TRIAGE_ORDER.map(c => (
+          <View key={c} style={styles.row}>
+            <View
+              style={[styles.swatch, { backgroundColor: triage[c].fill }]}
+            />
+            <Text style={styles.label} numberOfLines={1}>
+              {WORD[c]} ({TRIAGE_SHORT[c]})
+            </Text>
+            <Text style={styles.count}>{counts[c]}</Text>
+            <Text style={styles.pct}>({pct(counts[c])})</Text>
+          </View>
         ))}
       </View>
-      {rows.map((r, i) => (
+    </View>
+  );
+}
+
+/**
+ * Casualties by company: one row per company, stacked triage segments with
+ * each count printed inside, total on the right. Bars share one scale.
+ */
+export function CompanyBars({ data }: { data: CompanyBreakdown[] }) {
+  const max = Math.max(1, ...data.map(d => d.total));
+  return (
+    <View style={styles.bars}>
+      <View style={styles.barsHead}>
+        <Text style={styles.legendTitle}>Casualties by Company</Text>
+        <View style={styles.barsLegend}>
+          {TRIAGE_ORDER.map(c => (
+            <View key={c} style={styles.barsLegendItem}>
+              <View
+                style={[
+                  styles.barsLegendSwatch,
+                  { backgroundColor: triage[c].fill },
+                ]}
+              />
+              <Text style={styles.barsLegendText}>{WORD[c]}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+      {data.map(d => (
         <View
-          key={r.casualtyId}
-          style={[styles.tableRow, i % 2 === 1 && styles.tableRowAlt]}
+          key={d.company}
+          style={styles.barRow}
           accessible
-          accessibilityLabel={`${r.casualtyId}, ${
-            r.name ?? 'unidentified, temporary record'
-          }, ${r.company} company, triage ${r.triage}, ${
-            STAGE_LABEL[r.stage]
-          }, updated ${formatTime(r.updatedAt)}`}
+          accessibilityLabel={`${d.company} company: ${
+            d.total
+          } casualties. ${TRIAGE_ORDER.map(
+            c => `${triage[c].label} ${d.counts[c]}`,
+          ).join(', ')}`}
         >
-          <Text
-            style={[styles.td, styles.mono, { flex: COLUMNS[0].flex }]}
-            numberOfLines={1}
-          >
-            {r.casualtyId}
+          <Text style={styles.barLabel} numberOfLines={1}>
+            {d.company}
           </Text>
-          <Text
-            style={[
-              styles.td,
-              !r.name && styles.tdMuted,
-              { flex: COLUMNS[1].flex },
-            ]}
-            numberOfLines={1}
-          >
-            {r.name ?? 'Unidentified'}
-          </Text>
-          <Text
-            style={[styles.td, { flex: COLUMNS[2].flex }]}
-            numberOfLines={1}
-          >
-            {r.company}
-          </Text>
-          <View style={{ flex: COLUMNS[3].flex }}>
-            <TriageBadge category={r.triage} />
+          <View style={styles.barTrack}>
+            {d.total > 0 ? (
+              <View style={[styles.barFill, { flex: d.total }]}>
+                {TRIAGE_ORDER.filter(c => d.counts[c] > 0).map(c => (
+                  <View
+                    key={c}
+                    style={[
+                      styles.segment,
+                      { flex: d.counts[c], backgroundColor: triage[c].fill },
+                    ]}
+                  >
+                    <Text
+                      style={[styles.segmentText, { color: triage[c].onFill }]}
+                      numberOfLines={1}
+                    >
+                      {d.counts[c]}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+            {max - d.total > 0 ? (
+              <View style={{ flex: max - d.total }} />
+            ) : null}
           </View>
-          <Text
-            style={[styles.td, { flex: COLUMNS[4].flex }]}
-            numberOfLines={2}
-          >
-            {STAGE_LABEL[r.stage]}
-          </Text>
-          <Text style={[styles.td, styles.mono, { flex: COLUMNS[5].flex }]}>
-            {formatTime(r.updatedAt)}
-          </Text>
+          <Text style={styles.barTotal}>{d.total}</Text>
         </View>
       ))}
     </View>
   );
 }
 
-/* -------------------------------- Styles -------------------------------- */
-
 const styles = StyleSheet.create({
-  /* Quick action tile */
-  tile: {
-    flex: 1,
-    minWidth: 220,
-    minHeight: 72,
+  bars: {
+    gap: spacing.sm,
+  },
+  barsHead: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-    padding: layout.cardPadding,
-    borderRadius: radius.lg,
-    borderWidth: layout.borderWidth,
-  },
-  tilePrimary: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  tilePrimaryPressed: {
-    backgroundColor: colors.primaryPressed,
-  },
-  tileSecondary: {
-    backgroundColor: colors.background,
-    borderColor: colors.borderStrong,
-  },
-  tileSecondaryPressed: {
-    backgroundColor: colors.surfaceStrong,
-  },
-  tileIcon: {
-    width: 48,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-  },
-  tileIconPrimary: {
-    borderColor: 'rgba(255,255,255,0.55)',
-  },
-  tileText: {
-    flex: 1,
-    gap: 2,
-  },
-  tileTitle: {
-    fontSize: 18,
-    lineHeight: 24,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  tileSubtitle: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-  onPrimary: {
-    color: colors.onPrimary,
-  },
-  onPrimaryMuted: {
-    color: colors.onPrimaryMuted,
-  },
-
-  /* Summary card */
-  card: {
-    flex: 1,
-    minWidth: 104,
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.md + 2,
-    paddingBottom: spacing.md,
-    gap: 0,
-    backgroundColor: colors.background,
-    borderWidth: layout.borderWidth,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    overflow: 'hidden',
-  },
-  cardStrip: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 6,
-  },
-  cardLabel: {
-    ...typography.label,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  cardValue: {
-    ...typography.cardValue,
-    color: colors.textPrimary,
-  },
-  cardCaption: {
-    ...typography.label,
-    fontWeight: '400',
-    color: colors.textSecondary,
-  },
-
-  /* Chart card */
-  chartCard: {
-    padding: layout.cardPadding,
-    gap: spacing.md,
-    backgroundColor: colors.background,
-    borderWidth: layout.borderWidth,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-  },
-  chartHeader: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: 2,
+  },
+  barsLegend: {
+    flexDirection: 'row',
     gap: spacing.md,
   },
-  chartTitle: {
-    fontSize: 18,
-    lineHeight: 24,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    flexShrink: 1,
+  barsLegendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
-  chartMeta: {
+  barsLegendSwatch: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  barsLegendText: {
     ...typography.helper,
     color: colors.textSecondary,
   },
-  chartBody: {
-    gap: 6,
-  },
-
-  /* Bars */
   barRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -546,8 +230,8 @@ const styles = StyleSheet.create({
     minHeight: 28,
   },
   barLabel: {
-    ...typography.table,
-    width: 72,
+    ...typography.caption,
+    width: 64,
     color: colors.textPrimary,
   },
   barTrack: {
@@ -555,7 +239,7 @@ const styles = StyleSheet.create({
     height: 24,
     flexDirection: 'row',
     backgroundColor: colors.surface,
-    borderRadius: 4,
+    borderRadius: 6,
     overflow: 'hidden',
   },
   barFill: {
@@ -572,163 +256,69 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   barTotal: {
-    ...typography.table,
-    width: 32,
+    ...typography.caption,
+    width: 28,
     textAlign: 'right',
     fontWeight: '700',
     color: colors.textPrimary,
   },
-  triageRow: {
+  body: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-    minHeight: 42,
+    gap: spacing.xl,
   },
-  triageFill: {
-    borderRadius: 3,
+  donut: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  triageLabelCol: {
-    width: 128,
+  centre: {
+    position: 'absolute',
+    alignItems: 'center',
   },
-  triageLabel: {
-    ...typography.table,
+  total: {
+    fontSize: 30,
+    lineHeight: 34,
     fontWeight: '700',
     color: colors.textPrimary,
   },
-  triageMeaning: {
+  caption: {
     ...typography.helper,
     color: colors.textSecondary,
   },
-
-  /* Legend */
   legend: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  legendSwatch: {
-    width: 14,
-    height: 14,
-    borderRadius: 3,
-  },
-  legendText: {
-    ...typography.helper,
-    fontWeight: '600',
-    color: colors.textPrimary,
-  },
-
-  /* Triage badge */
-  triageBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: radius.sm,
-  },
-  triageBadgeText: {
-    ...typography.helper,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-
-  /* Evacuation flow */
-  flow: {
-    gap: 2,
-  },
-  flowStep: {
-    minHeight: layout.tableRowHeight,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingHorizontal: spacing.md,
-    borderWidth: layout.borderWidth,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    backgroundColor: colors.background,
-  },
-  flowStepDone: {
-    backgroundColor: colors.successSurface,
-    borderColor: colors.successBorder,
-  },
-  flowIndex: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    borderWidth: layout.borderWidth,
-    borderColor: colors.borderStrong,
-    textAlign: 'center',
-    textAlignVertical: 'center',
-    ...typography.helper,
-    lineHeight: 24,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  flowLabel: {
-    ...typography.table,
     flex: 1,
-    fontWeight: '600',
-    color: colors.textPrimary,
+    minWidth: 0,
+    gap: spacing.sm,
   },
-  flowValue: {
-    fontSize: 24,
-    lineHeight: 30,
+  legendTitle: {
+    ...typography.label,
     fontWeight: '700',
     color: colors.textPrimary,
   },
-  flowArrow: {
-    marginLeft: spacing.md + 6,
-    fontSize: 14,
-    lineHeight: 16,
-    color: colors.textSecondary,
-  },
-
-  /* Table */
-  table: {
-    borderWidth: layout.borderWidth,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    overflow: 'hidden',
-  },
-  tableRow: {
-    minHeight: layout.tableRowHeight,
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderTopWidth: layout.borderWidth,
-    borderTopColor: colors.divider,
   },
-  tableHead: {
-    minHeight: 40,
-    borderTopWidth: 0,
-    backgroundColor: colors.surface,
+  swatch: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
   },
-  tableRowAlt: {
-    backgroundColor: '#FAFBFC',
-  },
-  th: {
-    ...typography.helper,
-    fontWeight: '700',
-    color: colors.textSecondary,
-  },
-  td: {
-    ...typography.table,
+  label: {
+    ...typography.caption,
+    flex: 1,
     color: colors.textPrimary,
   },
-  tdMuted: {
-    color: colors.textSecondary,
-    fontStyle: 'italic',
+  count: {
+    ...typography.caption,
+    fontWeight: '700',
+    color: colors.textPrimary,
   },
-  mono: {
-    fontFamily: fonts.mono,
-    fontSize: 14,
-  },
-  empty: {
-    ...typography.body,
+  pct: {
+    ...typography.helper,
+    width: 46,
+    textAlign: 'right',
     color: colors.textSecondary,
   },
 });

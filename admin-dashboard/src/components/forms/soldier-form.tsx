@@ -6,6 +6,7 @@ import { SelectField, TextField, toOptions } from "@/components/ui/fields";
 import { Alert } from "@/components/ui/layout";
 import { buttonClasses } from "@/components/ui/button";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { PhotoField } from "./photo-field";
 import { IDLE_STATE, type ActionState } from "@/lib/action-state";
 import { BLOOD_GROUP_OPTIONS, RH_OPTIONS, SEX_OPTIONS, STATUS_OPTIONS } from "@/lib/domain/validation";
 
@@ -61,6 +62,7 @@ export function SoldierForm({
         )}
         <TextField name="rank" label="Rank" required maxLength={40} defaultValue={v.rank} error={e.rank} placeholder="e.g. Sepoy" />
         <TextField name="unit" label="Unit / formation" required maxLength={80} defaultValue={v.unit} error={e.unit} placeholder="e.g. 2 Demo Rifles" />
+        <PhotoField defaultValue={v.photo} error={e.photo} />
       </fieldset>
 
       <fieldset className={`${fieldset} lg:grid-cols-4`}>

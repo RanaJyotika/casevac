@@ -1,6 +1,7 @@
 /**
- * Home command dashboard: content, manual Patient ID entry, temporary
- * evacuation placeholder and log out.
+ * Home (UI v3): top bar status, first actions (scan, ID search, register),
+ * pending handovers & alerts, active evacuations, my recent records,
+ * operational snapshot, and log out from the account chip.
  */
 import React from 'react';
 import ReactTestRenderer from 'react-test-renderer';
@@ -51,11 +52,12 @@ function allText(tree: Renderer): string {
     .join(' | ');
 }
 
-function find(tree: Renderer, label: string) {
+function find(tree: Renderer, label: string, interactive = true) {
   return tree.root.find(
     node =>
       node.props.accessibilityLabel === label &&
-      (typeof node.props.onPress === 'function' ||
+      (!interactive ||
+        typeof node.props.onPress === 'function' ||
         typeof node.props.onChangeText === 'function'),
   );
 }
@@ -94,23 +96,67 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
-test('shows the command dashboard with actions, cards, charts and activity', async () => {
+test('shows the v3 Home: status bar, actions, alerts, evacuations, records and snapshot', async () => {
   const tree = await openHome();
   const text = allText(tree);
-  // Shell
-  expect(text).toContain('JEEVAN');
+  // Top bar: no sidebar; honest sync status; medic chip
+  expect(text).toContain('CASEVAC');
   expect(text).toContain('Home');
-  expect(text).toContain('Log out');
-  expect(text).toContain('Track Casualty');
-  // Quick actions
-  expect(text).toContain('Scan Patient QR');
-  expect(text).toContain('Enter Patient ID');
-  expect(text).toContain('Temporary Evacuation');
-  // Summary cards, honest data label
-  expect(text).toContain('Total casualties');
-  expect(text).toContain('Pending handover');
-  expect(text).toContain('Demo data');
-  // Charts: company names, triage labels with meanings
+  expect(text).toContain('Offline · 36 records queued');
+  expect(text).toContain('Not synced yet');
+  expect(text).toContain('Cpl. R. Demo');
+  expect(text).toContain('Medic · Demo');
+  expect(text).not.toContain('Track Casualty');
+  expect(text).not.toContain('Demo data');
+  // First actions
+  expect(text).toContain('Scan QR Tag');
+  expect(find(tree, 'Patient or casualty ID')).toBeDefined();
+  expect(text).toContain('Register New Casualty');
+  // Alerts derived from the records
+  expect(text).toContain('Pending Handovers & Alerts');
+  for (const title of [
+    'RED awaiting pickup',
+    'Handover pending',
+    'Unsynced records',
+    'Reassessment due',
+  ]) {
+    expect(text).toContain(title);
+  }
+  // This medic's active evacuations (awaiting pickup / in transfer)
+  expect(text).toContain('Continue Active Evacuations');
+  expect(text).toContain('View all (4)');
+  expect(
+    tree.root.findAll(
+      n =>
+        typeof n.props.accessibilityLabel === 'string' &&
+        /^Continue (PAT|TEMP)-/.test(n.props.accessibilityLabel) &&
+        typeof n.props.onPress === 'function',
+    ).length,
+  ).toBe(4);
+  // This medic's recent records (every 3rd demo record)
+  expect(text).toContain('My Recent Records');
+  expect(text).toContain('Created by Cpl. R. Demo');
+  expect(text).toContain('View all (12)');
+  // Landscape left column: actions, active evacuations, then stats
+  const at = (x: string) => text.indexOf(x);
+  expect(at('Continue Active Evacuations')).toBeGreaterThan(
+    at('Register New Casualty'),
+  );
+  expect(at('Operational Snapshot')).toBeGreaterThan(
+    at('Continue Active Evacuations'),
+  );
+  // Compact record rows in the narrow right column: no table header
+  expect(text).not.toContain('Date & Time');
+  // Snapshot of every record on the tablet
+  expect(text).toContain('Operational Snapshot');
+  expect(find(tree, 'Total casualties: 36', false)).toBeDefined();
+  expect(text).toContain('Triage Distribution');
+  expect(text).toContain('Red (Critical)');
+  expect(text).toContain('Yellow (Serious)');
+  expect(text).toContain('Black (Expectant)');
+  expect(text).toContain('(19%)');
+  // Casualties by company (follows the snapshot scope)
+  expect(text).toContain('Casualties by Company');
   for (const company of [
     'Alpha',
     'Bravo',
@@ -121,65 +167,92 @@ test('shows the command dashboard with actions, cards, charts and activity', asy
   ]) {
     expect(text).toContain(company);
   }
-  for (const label of ['RED', 'YELLOW', 'GREEN', 'BLACK', 'Critical']) {
-    expect(text).toContain(label);
-  }
-  // Activity table and evacuation flow
-  expect(text).toContain('Recent casualty activity');
-  expect(text).toContain('Awaiting pickup');
-  expect(text).toContain('Completed');
-  // The 36-casualty demo dataset total is shown
-  expect(text).toContain('36 total');
+  expect(
+    find(
+      tree,
+      'Alpha company: 9 casualties. RED 2, YELLOW 3, GREEN 3, BLACK 1',
+      false,
+    ),
+  ).toBeDefined();
+  expect(
+    find(
+      tree,
+      '36 casualties by triage colour: RED 7, YELLOW 11, GREEN 16, BLACK 2',
+      false,
+    ),
+  ).toBeDefined();
 });
 
-test('Enter Patient ID finds a provisioned patient and opens Patient Identification', async () => {
+test('My Casualties / All on Tablet switches the snapshot', async () => {
   const tree = await openHome();
-  await press(tree, 'Enter Patient ID');
-  expect(allText(tree)).toContain('manual entry does not verify the wristband');
+  expect(find(tree, 'Total casualties: 36', false)).toBeDefined();
+  expect(allText(tree)).toContain('Local records on this tablet');
 
-  await type(tree, 'Patient ID', 'pat-00042');
+  await press(tree, 'My Casualties');
+  expect(find(tree, 'Total casualties: 12', false)).toBeDefined();
+  expect(
+    tree.root.findAll(
+      n =>
+        typeof n.props.accessibilityLabel === 'string' &&
+        n.props.accessibilityLabel.startsWith('Alpha company: '),
+    )[0].props.accessibilityLabel,
+  ).not.toContain('9 casualties');
+  expect(allText(tree)).toContain('Recorded by you');
+
+  await press(tree, 'All on Tablet');
+  expect(find(tree, 'Total casualties: 36', false)).toBeDefined();
+});
+
+test('ID search finds a provisioned patient and opens Patient Identification', async () => {
+  const tree = await openHome();
+  await type(tree, 'Patient or casualty ID', 'pat-00042');
   await press(tree, 'Find patient');
   const text = allText(tree);
   expect(text).toContain('Patient Identification');
   expect(text).toContain('Identified by manual ID');
   expect(text).toContain('Wristband not verified');
-  expect(text).toContain('Sepoy Test Soldier');
-  expect(text).toContain('Manual Patient ID entry');
+  expect(text).toContain('Test Soldier');
+  expect(text).toContain('Sepoy');
+  expect(text).toContain('No previous record found');
   expect(text).not.toContain('Credential verified');
 
   await press(tree, 'Back');
-  expect(allText(tree)).toContain('CASUALTY OVERVIEW');
+  expect(allText(tree)).toContain('Operational Snapshot');
 });
 
-test('Enter Patient ID reports an unknown ID without opening any profile', async () => {
+test('ID search reports an unknown ID without opening any profile', async () => {
   const tree = await openHome();
-  await press(tree, 'Enter Patient ID');
   await press(tree, 'Find patient');
-  expect(allText(tree)).toContain('Enter the Patient ID.');
+  expect(allText(tree)).toContain('Enter the soldier or casualty ID.');
 
-  await type(tree, 'Patient ID', 'PAT-0004');
+  await type(tree, 'Patient or casualty ID', 'PAT-0004');
   await press(tree, 'Find patient');
   const text = allText(tree);
-  expect(text).toContain('PATIENT NOT FOUND ON THIS TABLET');
-  expect(text).toContain('No patient with ID PAT-0004');
+  expect(text).toContain('No patient with ID PAT-0004 on this tablet.');
   expect(text).not.toContain('Patient Identification');
 });
 
-test('Temporary Evacuation explains it is coming next and changes nothing', async () => {
+test('actions for screens not built yet explain that and change nothing', async () => {
   const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   const tree = await openHome();
-  await press(tree, 'Temporary Evacuation');
-  expect(alertSpy).toHaveBeenCalledWith(
-    'Temporary evacuation — coming next',
+
+  await press(tree, 'Continue PAT-00101');
+  expect(alertSpy).toHaveBeenLastCalledWith(
+    'Continue evacuation — coming next',
     expect.stringContaining('No data has been changed'),
   );
-  expect(allText(tree)).toContain('CASUALTY OVERVIEW');
+  await press(tree, 'Unsynced records: Sync now');
+  expect(alertSpy).toHaveBeenLastCalledWith(
+    'Sync not available yet',
+    expect.stringContaining('stay saved on this tablet'),
+  );
+  expect(allText(tree)).toContain('Operational Snapshot');
 });
 
-test('Log out asks for confirmation, then returns to login', async () => {
+test('Log out from the account chip asks for confirmation, then returns to login', async () => {
   const alertSpy = jest.spyOn(Alert, 'alert');
   const tree = await openHome();
-  await press(tree, 'Log out');
+  await press(tree, 'Account and log out');
   const buttons = alertSpy.mock.calls[0][2] as {
     text: string;
     onPress?: () => void;

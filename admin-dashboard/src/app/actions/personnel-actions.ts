@@ -28,6 +28,7 @@ const SOLDIER_FIELDS = [
   "nextOfKinPhone",
   "contactPhone",
   "status",
+  "photo",
 ] as const;
 
 const STAFF_FIELDS = [

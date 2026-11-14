@@ -13,6 +13,7 @@ import type {
   DatabaseSnapshot,
   IdentityCredential,
   MedicalTeam,
+  MobileLoginAccount,
   PersonRecord,
   SequenceKey,
 } from "../domain/types";
@@ -25,6 +26,7 @@ export function emptySnapshot(): DatabaseSnapshot {
     persons: [],
     credentials: [],
     teams: [],
+    mobileAccounts: [],
     auditLog: [],
   };
 }
@@ -63,6 +65,16 @@ class SnapshotStore implements RepositoryWriter {
   }
   async getTeam(id: string) {
     const found = this.db.teams.find(t => t.id === id);
+    return found ? clone(found) : null;
+  }
+  async listMobileAccounts() {
+    return clone(this.db.mobileAccounts);
+  }
+  async findMobileAccountByUserId(userId: string) {
+    const key = userId.trim().toUpperCase();
+    // Prefer the live account; fall back to the newest revoked one.
+    const matches = this.db.mobileAccounts.filter(a => a.userId === key);
+    const found = matches.find(a => a.status !== "REVOKED") ?? matches.at(-1);
     return found ? clone(found) : null;
   }
   async listAuditEvents(limit: number) {
@@ -105,6 +117,23 @@ class SnapshotStore implements RepositoryWriter {
   }
   async updateTeam(team: MedicalTeam) {
     replaceById(this.db.teams, team, "team");
+  }
+  async insertMobileAccount(account: MobileLoginAccount) {
+    if (this.db.mobileAccounts.some(a => a.id === account.id)) {
+      throw new Error("Constraint violation: duplicate mobile account id");
+    }
+    if (
+      account.status !== "REVOKED" &&
+      this.db.mobileAccounts.some(
+        a => a.status !== "REVOKED" && (a.userId === account.userId || a.personId === account.personId),
+      )
+    ) {
+      throw new Error("Constraint violation: user ID or person already has a live mobile account");
+    }
+    this.db.mobileAccounts.push(clone(account));
+  }
+  async updateMobileAccount(account: MobileLoginAccount) {
+    replaceById(this.db.mobileAccounts, account, "mobile account");
   }
   async appendAudit(event: AuditEvent) {
     this.db.auditLog.push(clone(event));
@@ -190,6 +219,8 @@ export class JsonFileRepository implements CasevacRepository {
   async findCredentialByToken(token: string) { return (await this.view()).findCredentialByToken(token); }
   async listTeams() { return (await this.view()).listTeams(); }
   async getTeam(id: string) { return (await this.view()).getTeam(id); }
+  async listMobileAccounts() { return (await this.view()).listMobileAccounts(); }
+  async findMobileAccountByUserId(userId: string) { return (await this.view()).findMobileAccountByUserId(userId); }
   async listAuditEvents(limit: number) { return (await this.view()).listAuditEvents(limit); }
 
   async transaction<T>(work: (tx: RepositoryWriter) => Promise<T>): Promise<T> {

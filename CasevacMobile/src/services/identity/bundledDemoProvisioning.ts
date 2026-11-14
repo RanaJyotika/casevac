@@ -22,6 +22,7 @@ import type {
   IdentityDirectory,
   PatientIdentity,
   RhFactor,
+  Sex,
   TrustedIssuerKey,
   TrustStore,
 } from './types';
@@ -31,6 +32,11 @@ const KEY_ID = /^[a-z0-9][a-z0-9-]{0,31}$/;
 const STATUSES: CredentialStatus[] = ['ACTIVE', 'REVOKED', 'REPLACED'];
 const BLOOD: BloodGroup[] = ['UNKNOWN', 'A', 'B', 'AB', 'O'];
 const RH: RhFactor[] = ['UNKNOWN', 'POSITIVE', 'NEGATIVE'];
+const SEX: Sex[] = ['NOT_RECORDED', 'MALE', 'FEMALE'];
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+/** Accept only small JPEG data URLs; anything else is dropped, never shown. */
+const PHOTO = /^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/;
+const PHOTO_MAX_LENGTH = 80_000;
 
 type Json = Record<string, unknown>;
 const isObject = (v: unknown): v is Json =>
@@ -103,6 +109,9 @@ export function parseDirectory(json: unknown): ParsedDirectory {
     }
     const blood = str(p.bloodGroup) as BloodGroup;
     const rh = str(p.rhFactor) as RhFactor;
+    const sex = str(p.sex) as Sex;
+    const dob = str(p.dateOfBirth);
+    const photo = str(p.photo);
     patients.push({
       patientId,
       displayId,
@@ -111,6 +120,12 @@ export function parseDirectory(json: unknown): ParsedDirectory {
       unit: str(p.unit) ?? '',
       bloodGroup: BLOOD.includes(blood) ? blood : 'UNKNOWN',
       rhFactor: RH.includes(rh) ? rh : 'UNKNOWN',
+      sex: SEX.includes(sex) ? sex : 'NOT_RECORDED',
+      dateOfBirth: dob && ISO_DATE.test(dob) ? dob : null,
+      photo:
+        photo && photo.length <= PHOTO_MAX_LENGTH && PHOTO.test(photo)
+          ? photo
+          : null,
     });
   }
   const credentials: CredentialRecord[] = [];

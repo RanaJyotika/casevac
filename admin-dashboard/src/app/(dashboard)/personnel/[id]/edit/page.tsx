@@ -36,6 +36,7 @@ export default async function EditPersonPage({ params }: PageProps<"/personnel/[
               unit: person.unit,
               dateOfBirth: person.soldier.dateOfBirth ?? "",
               sex: person.soldier.sex,
+              photo: person.soldier.photo ?? "",
               bloodGroup: person.soldier.bloodGroup,
               rhFactor: person.soldier.rhFactor,
               medicalCategory: person.soldier.medicalCategory,

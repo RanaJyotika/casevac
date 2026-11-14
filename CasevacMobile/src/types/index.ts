@@ -22,7 +22,18 @@ export interface Clinician {
   team: string;
   /** True while authentication is mocked. Must be shown in the UI. */
   isDemo: boolean;
+  /**
+   * How this session started. 'offline' = verified against the copy saved on
+   * this tablet; 'emergency' = no sign-in at all (break-glass, unverified).
+   */
+  signInMode?: SignInMode;
+  roleLabel?: string;
+  unit?: string;
+  /** Dashboard Person.id of the signed-in medic (not set for demo/emergency). */
+  personId?: string;
 }
+
+export type SignInMode = 'online' | 'offline' | 'demo' | 'emergency';
 
 export interface EvacuationSummary {
   /** Distinct per injury/episode, e.g. EVAC-DEMO-001 */

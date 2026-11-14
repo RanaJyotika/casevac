@@ -6,14 +6,20 @@
  * credential navigates onward; every failure stays on this screen with a
  * plain-language reason and never shows another person's profile.
  */
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
-  Alert,
   AppState,
   Linking,
   PermissionsAndroid,
   Platform,
   ScrollView,
+  useWindowDimensions,
   StyleSheet,
   Text,
   View,
@@ -28,11 +34,14 @@ import {
   SecondaryButton,
   StatusBadge,
 } from '../components';
-import { MOCK_CONNECTIVITY } from '../data/mockData';
 import {
-  getBundledIdentityDirectory,
-  getBundledTrustStore,
-} from '../services/identity/bundledDemoProvisioning';
+  SERVER_STATUS_LABEL,
+  useServerStatus,
+} from '../services/connectivity/useServerStatus';
+import {
+  getActiveIdentityDirectory,
+  getActiveTrustStore,
+} from '../services/identity/provisioningStore';
 import type { DirectoryInfo } from '../services/identity/types';
 import { describeFailure } from '../services/qr/identificationMessages';
 import {
@@ -47,7 +56,9 @@ import { formatDateTime } from '../utils/format';
 interface ScanPatientScreenProps {
   onBack: () => void;
   onIdentified: (result: VerifiedIdentification) => void;
-  /** Injected in tests; defaults to the bundled demo provisioning. */
+  /** Unknown Casualty: register a casualty with no (readable) wristband. */
+  onRegisterPatient: () => void;
+  /** Injected in tests; defaults to the directory downloaded at sign-in. */
   deps?: IdentificationDeps;
 }
 
@@ -92,13 +103,14 @@ async function checkCameraPermission(
 export function ScanPatientScreen({
   onBack,
   onIdentified,
+  onRegisterPatient,
   deps,
 }: ScanPatientScreenProps) {
   const services = useMemo<IdentificationDeps>(
     () =>
       deps ?? {
-        trustStore: getBundledTrustStore(),
-        directory: getBundledIdentityDirectory(),
+        trustStore: getActiveTrustStore(),
+        directory: getActiveIdentityDirectory(),
       },
     [deps],
   );
@@ -210,13 +222,16 @@ export function ScanPatientScreen({
     setPhase({ kind: 'scanning' });
   };
 
-  const showUnknownCasualty = () =>
-    Alert.alert(
-      'Unknown Casualty — coming later',
-      'Screen M05 is not built yet in this demo build. No data has been changed.',
-    );
+  const showUnknownCasualty = onRegisterPatient;
 
   const cameraActive = phase.kind === 'scanning' || phase.kind === 'verifying';
+  const serverStatus = useServerStatus();
+
+  // Landscape: camera on the left, controls on the right, so nothing needs
+  // scrolling (the native camera view swallows drags that start on it).
+  const { width, height } = useWindowDimensions();
+  const split = width > height && width >= 900;
+  const cameraSide = Math.min(560, Math.max(280, height - 200), width * 0.5);
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
@@ -226,13 +241,17 @@ export function ScanPatientScreen({
         onBack={onBack}
         right={
           <StatusBadge
-            label={MOCK_CONNECTIVITY === 'offline' ? 'Offline' : 'Online'}
+            label={SERVER_STATUS_LABEL[serverStatus]}
+            tone={serverStatus === 'online' ? 'success' : 'neutral'}
           />
         }
       />
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[styles.content, split && styles.contentSplit]}
+      >
         {cameraActive ? (
-          <>
+          <View style={split ? { width: cameraSide } : undefined}>
             <View style={styles.cameraBox}>
               <Camera
                 style={StyleSheet.absoluteFill}
@@ -261,101 +280,115 @@ export function ScanPatientScreen({
               </View>
               {phase.kind === 'verifying' ? (
                 <View style={styles.verifyingOverlay}>
-                  <Text style={styles.verifyingText}>Verifying credential…</Text>
+                  <Text style={styles.verifyingText}>
+                    Verifying credential…
+                  </Text>
                 </View>
               ) : null}
             </View>
-            <Text
-              style={styles.status}
-              accessibilityLiveRegion="polite"
-              accessibilityRole="text"
-            >
-              {phase.kind === 'verifying'
-                ? 'Verifying credential on this phone…'
-                : 'Point the camera at the wristband QR code.'}
+          </View>
+        ) : null}
+        <View style={split ? styles.controlsSplit : styles.controls}>
+          {cameraActive ? (
+            <>
+              <Text
+                style={styles.status}
+                accessibilityLiveRegion="polite"
+                accessibilityRole="text"
+              >
+                {phase.kind === 'verifying'
+                  ? 'Verifying credential on this phone…'
+                  : 'Point the camera at the wristband QR code.'}
+              </Text>
+              <SecondaryButton
+                title={torchOn ? 'Turn torch off' : 'Turn torch on'}
+                onPress={() => setTorchOn(on => !on)}
+                disabled={phase.kind !== 'scanning'}
+              />
+            </>
+          ) : null}
+
+          {phase.kind === 'checking-permission' ? (
+            <Text style={styles.status}>Checking camera permission…</Text>
+          ) : null}
+
+          {phase.kind === 'permission-denied' ? (
+            <View style={styles.block}>
+              <Notice
+                tone="warning"
+                title="Camera permission needed"
+                message={
+                  phase.blocked
+                    ? 'Camera access is turned off for CASEVAC. Enable it in Android settings to scan wristbands.'
+                    : 'CASEVAC needs the camera to read wristband QR codes. Nothing is recorded or stored from the camera.'
+                }
+              />
+              {phase.blocked ? (
+                <PrimaryButton
+                  title="Open settings"
+                  onPress={() => Linking.openSettings()}
+                />
+              ) : (
+                <PrimaryButton
+                  title="Allow camera"
+                  onPress={() => resolvePermission(true)}
+                />
+              )}
+            </View>
+          ) : null}
+
+          {phase.kind === 'camera-error' ? (
+            <View style={styles.block}>
+              <Notice
+                tone="error"
+                title="Camera unavailable"
+                message="The camera could not be started. Close other camera apps and try again."
+              />
+              <PrimaryButton title="Try again" onPress={scanAgain} />
+            </View>
+          ) : null}
+
+          {phase.kind === 'failed' ? (
+            <View style={styles.block}>
+              <Notice tone="error" {...describeFailure(phase.result)} />
+              <PrimaryButton title="Scan again" onPress={scanAgain} />
+            </View>
+          ) : null}
+
+          <SecondaryButton
+            title="Unknown Casualty"
+            icon={<GlyphIcon glyph="+" />}
+            onPress={showUnknownCasualty}
+            accessibilityHint="Start care without a wristband"
+          />
+
+          <View style={styles.infoPanel}>
+            <Text style={styles.infoTitle}>VERIFICATION ON THIS PHONE</Text>
+            <Text style={styles.infoText}>
+              Trusted issuer keys:{' '}
+              {provisioning
+                ? provisioning.keyIds.length > 0
+                  ? provisioning.keyIds.join(', ')
+                  : 'none provisioned'
+                : '…'}
             </Text>
-            <SecondaryButton
-              title={torchOn ? 'Turn torch off' : 'Turn torch on'}
-              onPress={() => setTorchOn(on => !on)}
-              disabled={phase.kind !== 'scanning'}
-            />
-          </>
-        ) : null}
-
-        {phase.kind === 'checking-permission' ? (
-          <Text style={styles.status}>Checking camera permission…</Text>
-        ) : null}
-
-        {phase.kind === 'permission-denied' ? (
-          <View style={styles.block}>
-            <Notice
-              tone="warning"
-              title="Camera permission needed"
-              message={
-                phase.blocked
-                  ? 'Camera access is turned off for CASEVAC. Enable it in Android settings to scan wristbands.'
-                  : 'CASEVAC needs the camera to read wristband QR codes. Nothing is recorded or stored from the camera.'
-              }
-            />
-            {phase.blocked ? (
-              <PrimaryButton
-                title="Open settings"
-                onPress={() => Linking.openSettings()}
-              />
-            ) : (
-              <PrimaryButton
-                title="Allow camera"
-                onPress={() => resolvePermission(true)}
-              />
-            )}
+            <Text style={styles.infoText}>
+              Identity directory
+              {provisioning?.directory.source === 'BACKEND'
+                ? ' (downloaded at sign-in)'
+                : ' (bundled demo)'}
+              :{' '}
+              {provisioning
+                ? provisioning.directory.generatedAt
+                  ? `${
+                      provisioning.directory.patientCount
+                    } patients, updated ${formatDateTime(
+                      provisioning.directory.generatedAt,
+                    )}`
+                  : 'not provisioned'
+                : '…'}
+            </Text>
           </View>
-        ) : null}
-
-        {phase.kind === 'camera-error' ? (
-          <View style={styles.block}>
-            <Notice
-              tone="error"
-              title="Camera unavailable"
-              message="The camera could not be started. Close other camera apps and try again."
-            />
-            <PrimaryButton title="Try again" onPress={scanAgain} />
-          </View>
-        ) : null}
-
-        {phase.kind === 'failed' ? (
-          <View style={styles.block}>
-            <Notice tone="error" {...describeFailure(phase.result)} />
-            <PrimaryButton title="Scan again" onPress={scanAgain} />
-          </View>
-        ) : null}
-
-        <SecondaryButton
-          title="Unknown Casualty"
-          icon={<GlyphIcon glyph="+" />}
-          onPress={showUnknownCasualty}
-          accessibilityHint="Start care without a wristband"
-        />
-
-        <View style={styles.infoPanel}>
-          <Text style={styles.infoTitle}>VERIFICATION ON THIS PHONE</Text>
-          <Text style={styles.infoText}>
-            Trusted issuer keys:{' '}
-            {provisioning
-              ? provisioning.keyIds.length > 0
-                ? provisioning.keyIds.join(', ')
-                : 'none provisioned'
-              : '…'}
-          </Text>
-          <Text style={styles.infoText}>
-            Identity directory (demo):{' '}
-            {provisioning
-              ? provisioning.directory.generatedAt
-                ? `${provisioning.directory.patientCount} patients, updated ${formatDateTime(
-                    provisioning.directory.generatedAt,
-                  )}`
-                : 'not provisioned'
-              : '…'}
-          </Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -378,10 +411,23 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.md,
   },
+  contentSplit: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.xl,
+  },
+  controls: {
+    gap: spacing.md,
+  },
+  controlsSplit: {
+    flex: 1,
+    minWidth: 0,
+    gap: spacing.md,
+  },
   cameraBox: {
     width: '100%',
     aspectRatio: 1,
-    maxHeight: 420,
+    maxHeight: 560,
     alignSelf: 'center',
     backgroundColor: '#000000',
     borderRadius: radius.md,

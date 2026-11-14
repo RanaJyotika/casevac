@@ -1,82 +1,99 @@
 /**
- * M02 — Home: command dashboard (SCREEN_SPECIFICATIONS.md, UI_DESIGN_GUIDELINES.md §5).
+ * M02 — Home (Home UI v3, 13 Nov 2026).
  *
- *   Quick actions  — Scan Patient QR · Enter Patient ID · Temporary Evacuation
- *   Summary cards  — Total, RED, YELLOW, GREEN, BLACK, Active, Pending handover, Completed
- *   Charts         — casualties by company (stacked) · by triage category
- *   Activity       — recent casualty table · evacuation flow
+ * Landscape (two columns)
+ *   left  — Scan QR Tag · ID search · Register New Casualty
+ *           Continue Active Evacuations (this medic, not yet handed over)
+ *           Operational Snapshot: My Casualties / All on Tablet toggle,
+ *           count tiles, triage donut and casualties by company
+ *   right — Pending Handovers & Alerts (derived from the records)
+ *           My Recent Records (created by this medic; compact rows)
+ * Portrait (one column): actions, alerts, active evacuations, snapshot,
+ * recent records — so the critical items stay near the top.
  *
  * Figures come from the DEMO dataset until evacuation records are stored on
- * the tablet; the screen says so. Nothing is labelled as live or force-wide.
+ * the tablet; the top bar marks a demo session ("· Demo" under the medic).
+ * Screens that do not exist yet (evacuation record, handover, sync) explain
+ * that when opened — nothing pretends to work.
  */
 import React, { useEffect, useMemo, useState } from 'react';
+import { Alert, StyleSheet, useWindowDimensions, View } from 'react-native';
 import {
-  Alert,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from 'react-native';
-import {
+  AlertCards,
   AppShell,
-  ChartCard,
-  CompanyStackedBarChart,
-  EvacuationFlow,
-  GlyphIcon,
-  ManualPatientIdDialog,
-  QrIcon,
-  QuickActionTile,
-  RecentActivityTable,
-  StatusBadge,
-  SummaryCard,
-  TriageBarChart,
-  TriageLegend,
-  type NavKey,
+  Card,
+  CompanyBars,
+  EvacuationRows,
+  IdSearch,
+  PillToggle,
+  RecentRecordRows,
+  RegisterBar,
+  ScanCard,
+  SnapshotTiles,
+  TriageDonut,
 } from '../components';
 import { loadDashboardData, type DashboardData } from '../data/demoCasualties';
-import { computeDashboardStats } from '../services/dashboard/dashboardStats';
-import { getBundledIdentityDirectory } from '../services/identity/bundledDemoProvisioning';
+import { useServerStatus } from '../services/connectivity/useServerStatus';
+import {
+  activeEvacuationsBy,
+  computeAlerts,
+  computeDashboardStats,
+  recordsBy,
+  type HomeAlert,
+} from '../services/dashboard/dashboardStats';
+import { getActiveIdentityDirectory } from '../services/identity/provisioningStore';
 import type { ManualIdentification } from '../services/identity/manualLookup';
 import type { IdentityDirectory } from '../services/identity/types';
-import { colors, layout, spacing, typography } from '../theme/tokens';
+import type { FieldLink } from '../services/patients/fieldRegistry';
+import { colors, radius, spacing } from '../theme/tokens';
 import type { Clinician } from '../types';
-import { formatTime } from '../utils/format';
 
 interface HomeScreenProps {
   clinician: Clinician;
   onScanPatient: () => void;
   onPatientIdentified: (result: ManualIdentification) => void;
+  /** Opens Register New Patient (optionally carrying a typed ID not found). */
+  onRegisterPatient: (link: FieldLink) => void;
   onSignOut: () => void;
-  /** Injected in tests; defaults to the bundled demo directory. */
+  /** Injected in tests; defaults to the directory downloaded at sign-in. */
   directory?: IdentityDirectory;
 }
+
+/** Two columns when the content area is at least this wide. */
+const TWO_COLUMN_MIN = 960;
+const ACTIVE_ROWS = 4;
+
+type SnapshotScope = 'mine' | 'tablet';
+const RECENT_ROWS = 5;
+
+const comingNext = (title: string, what: string) =>
+  Alert.alert(
+    `${title} — coming next`,
+    `${what} is built in the next phase. No data has been changed.`,
+  );
 
 export function HomeScreen({
   clinician,
   onScanPatient,
   onPatientIdentified,
+  onRegisterPatient,
   onSignOut,
   directory,
 }: HomeScreenProps) {
   const { width } = useWindowDimensions();
-  const navWidth =
-    width < layout.navCollapseBelow
-      ? layout.sidebarCompactWidth
-      : layout.sidebarWidth;
-  const contentWidth = width - navWidth - layout.contentPadding * 2;
-  const cardsInOneRow = contentWidth >= 900;
-  const sideBySide = contentWidth >= 720;
+  const twoColumns = width - spacing.lg * 2 >= TWO_COLUMN_MIN;
 
   const [data, setData] = useState<DashboardData | null>(null);
-  const [manualOpen, setManualOpen] = useState(false);
+  const serverStatus = useServerStatus();
+  const [scope, setScope] = useState<SnapshotScope>('tablet');
   const identityDirectory = useMemo(
-    () => directory ?? getBundledIdentityDirectory(),
+    () => directory ?? getActiveIdentityDirectory(),
     [directory],
   );
 
   useEffect(() => {
     let cancelled = false;
-    loadDashboardData().then(result => {
+    loadDashboardData(clinician.id).then(result => {
       if (!cancelled) {
         setData(result);
       }
@@ -84,14 +101,30 @@ export function HomeScreen({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [clinician.id]);
 
+  const now = data ? new Date(data.loadedAt).getTime() : Date.now();
+  const mine = useMemo(
+    () => (data ? recordsBy(data.casualties, clinician.id) : []),
+    [data, clinician.id],
+  );
+  const active = useMemo(
+    () => (data ? activeEvacuationsBy(data.casualties, clinician.id) : []),
+    [data, clinician.id],
+  );
   const stats = useMemo(
-    () => (data ? computeDashboardStats(data.casualties, 5) : null),
-    [data],
+    () =>
+      data
+        ? computeDashboardStats(scope === 'mine' ? mine : data.casualties)
+        : null,
+    [data, scope, mine],
+  );
+  const alerts = useMemo(
+    () => (data ? computeAlerts(data.casualties, now, data.sync.queued) : []),
+    [data, now],
   );
 
-  const confirmLogout = () => {
+  const openAccount = () => {
     Alert.alert(
       'Log out?',
       'Records saved on this tablet remain available after you sign in again.',
@@ -102,237 +135,172 @@ export function HomeScreen({
     );
   };
 
-  const startTemporaryEvacuation = () => {
-    setManualOpen(false);
-    Alert.alert(
-      'Temporary evacuation — coming next',
-      'For a casualty with no wristband, or whose ID is destroyed or unreadable. It will create a temporary casualty ID and start the evacuation immediately; an authorised user can link it to the real identity later.\n\nIt needs evacuation storage on this tablet, which is built in the next phase. No data has been changed.',
-    );
-  };
-
-  const navigate = (key: NavKey) => {
-    if (key === 'scan') {
-      onScanPatient();
+  const onAlertAction = (alert: HomeAlert) => {
+    if (alert.id === 'unsynced') {
+      Alert.alert(
+        'Sync not available yet',
+        'Sync with the base server is built in a later phase. All records stay saved on this tablet.',
+      );
+    } else if (alert.id === 'reassess') {
+      comingNext('Reassessment', 'The reassessment screen');
+    } else {
+      comingNext('Handover', 'The handover screen');
     }
   };
 
-  const dataNote = data
-    ? `${
-        data.source === 'DEMO' ? 'Demo data — fictional' : 'On this tablet'
-      } · updated ${formatTime(data.loadedAt)}`
-    : 'Loading…';
+  const medicName =
+    [clinician.rank, clinician.displayName].filter(Boolean).join(' ') ||
+    clinician.id;
+
+  const actions = (
+    <View style={styles.actionsCard}>
+      <ScanCard onPress={onScanPatient} />
+      <IdSearch
+        directory={identityDirectory}
+        onFound={onPatientIdentified}
+        onRegisterNotFound={enteredId => onRegisterPatient({ enteredId })}
+      />
+      <RegisterBar onPress={() => onRegisterPatient({})} />
+    </View>
+  );
+
+  const alertsCard = (
+    <Card title="Pending Handovers & Alerts">
+      <AlertCards alerts={alerts} onAction={onAlertAction} />
+    </Card>
+  );
+
+  const activeCard = (
+    <Card
+      title="Continue Active Evacuations"
+      action={{
+        label: `View all (${active.length})`,
+        onPress: () => comingNext('Evacuations', 'The evacuations list'),
+      }}
+    >
+      <EvacuationRows
+        rows={active.slice(0, ACTIVE_ROWS)}
+        onContinue={() =>
+          comingNext('Continue evacuation', 'The evacuation record screen')
+        }
+        emptyText="No active evacuations. Scan a tag to start one."
+      />
+    </Card>
+  );
+
+  const recentCard = (
+    <Card
+      title="My Recent Records"
+      subtitle={`Created by ${medicName}`}
+      action={{
+        label: `View all (${mine.length})`,
+        onPress: () => comingNext('My records', 'The full records list'),
+      }}
+    >
+      <RecentRecordRows
+        rows={mine.slice(0, RECENT_ROWS)}
+        now={now}
+        compact={twoColumns}
+        emptyText="You have not recorded any casualties yet."
+      />
+    </Card>
+  );
+
+  const snapshotCard = stats ? (
+    <Card
+      title="Operational Snapshot"
+      subtitle={
+        scope === 'mine' ? 'Recorded by you' : 'Local records on this tablet'
+      }
+      right={
+        <PillToggle<SnapshotScope>
+          label="Snapshot scope"
+          value={scope}
+          onChange={setScope}
+          options={[
+            { value: 'mine', label: 'My Casualties' },
+            { value: 'tablet', label: 'All on Tablet' },
+          ]}
+        />
+      }
+    >
+      <SnapshotTiles total={stats.total} counts={stats.byTriage} />
+      <View style={styles.donutBox}>
+        <TriageDonut counts={stats.byTriage} />
+      </View>
+      <View style={styles.donutBox}>
+        <CompanyBars data={stats.byCompany} />
+      </View>
+    </Card>
+  ) : null;
 
   return (
     <AppShell
       title="Home"
       clinician={clinician}
-      active="home"
-      onNavigate={navigate}
-      onLogout={confirmLogout}
+      status={{
+        online: serverStatus === 'online',
+        queued: data?.sync.queued ?? 0,
+        lastSyncedAt: data?.sync.lastSyncedAt ?? null,
+      }}
+      onAccount={openAccount}
     >
-      {/* Quick actions */}
-      <View style={styles.row}>
-        <QuickActionTile
-          variant="primary"
-          title="Scan Patient QR"
-          subtitle="Read the casualty's wristband"
-          icon={<QrIcon />}
-          onPress={onScanPatient}
-        />
-        <QuickActionTile
-          title="Enter Patient ID"
-          subtitle="Wristband damaged or unreadable"
-          icon={<GlyphIcon glyph="#" />}
-          onPress={() => setManualOpen(true)}
-        />
-        <QuickActionTile
-          title="Temporary Evacuation"
-          subtitle="No ID — anonymous record"
-          icon={<GlyphIcon glyph="+" />}
-          onPress={startTemporaryEvacuation}
-        />
-      </View>
-
-      {/* Overview header */}
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle} accessibilityRole="header">
-          CASUALTY OVERVIEW
-        </Text>
-        <View style={styles.sectionMeta}>
-          {data?.source === 'DEMO' ? (
-            <StatusBadge label="Demo data" tone="warning" />
-          ) : null}
-          <Text style={styles.metaText}>{dataNote}</Text>
+      {twoColumns ? (
+        <View style={styles.columns}>
+          <View style={styles.left}>
+            {actions}
+            {activeCard}
+            {snapshotCard}
+          </View>
+          <View style={styles.right}>
+            {alertsCard}
+            {recentCard}
+          </View>
         </View>
-      </View>
-
-      {stats ? (
-        <>
-          {/* Summary cards */}
-          <View style={[styles.cards, !cardsInOneRow && styles.cardsWrap]}>
-            {[
-              <SummaryCard
-                key="total"
-                label="Total casualties"
-                value={stats.total}
-              />,
-              <SummaryCard
-                key="red"
-                label="Critical"
-                category="RED"
-                value={stats.byTriage.RED}
-              />,
-              <SummaryCard
-                key="yellow"
-                label="Moderate"
-                category="YELLOW"
-                value={stats.byTriage.YELLOW}
-              />,
-              <SummaryCard
-                key="green"
-                label="Stable"
-                category="GREEN"
-                value={stats.byTriage.GREEN}
-              />,
-              <SummaryCard
-                key="black"
-                label="Deceased"
-                category="BLACK"
-                value={stats.byTriage.BLACK}
-              />,
-              <SummaryCard
-                key="active"
-                label="Active evacuations"
-                value={stats.activeEvacuations}
-              />,
-              <SummaryCard
-                key="pending"
-                label="Pending handover"
-                value={stats.pendingHandover}
-              />,
-              <SummaryCard
-                key="done"
-                label="Completed"
-                value={stats.completedEvacuations}
-              />,
-            ].map(card => (
-              <View
-                key={card.key}
-                style={cardsInOneRow ? styles.cardCellRow : styles.cardCellWrap}
-              >
-                {card}
-              </View>
-            ))}
-          </View>
-
-          {/* Charts */}
-          <View style={[styles.row, !sideBySide && styles.stack]}>
-            <ChartCard
-              title="Casualties by company"
-              headerRight={<TriageLegend />}
-              style={sideBySide ? styles.wide : undefined}
-            >
-              <CompanyStackedBarChart data={stats.byCompany} />
-            </ChartCard>
-            <ChartCard
-              title="Casualties by category"
-              meta={`${stats.total} total`}
-              style={sideBySide ? styles.narrow : undefined}
-            >
-              <TriageBarChart counts={stats.byTriage} />
-            </ChartCard>
-          </View>
-
-          {/* Activity and flow */}
-          <View style={[styles.row, !sideBySide && styles.stack]}>
-            <ChartCard
-              title="Recent casualty activity"
-              meta="Latest updates first"
-              style={sideBySide ? styles.wide : undefined}
-            >
-              <RecentActivityTable rows={stats.recent} />
-            </ChartCard>
-            <ChartCard
-              title="Evacuation status"
-              meta="Provisional stages"
-              style={sideBySide ? styles.narrow : undefined}
-            >
-              <EvacuationFlow byStage={stats.byStage} />
-              <Text style={styles.flowNote}>
-                Stage counts are operational status, not proof of digital record
-                transfer.
-              </Text>
-            </ChartCard>
-          </View>
-        </>
       ) : (
-        <Text style={styles.metaText}>Loading dashboard…</Text>
+        <View style={styles.stack}>
+          {actions}
+          {alertsCard}
+          {activeCard}
+          {snapshotCard}
+          {recentCard}
+        </View>
       )}
-
-      <ManualPatientIdDialog
-        visible={manualOpen}
-        directory={identityDirectory}
-        onCancel={() => setManualOpen(false)}
-        onFound={result => {
-          setManualOpen(false);
-          onPatientIdentified(result);
-        }}
-        onStartTemporary={startTemporaryEvacuation}
-      />
     </AppShell>
   );
 }
 
 const styles = StyleSheet.create({
-  row: {
+  columns: {
     flexDirection: 'row',
-    gap: layout.gutter,
+    alignItems: 'flex-start',
+    gap: spacing.lg,
+  },
+  left: {
+    flex: 1.45,
+    minWidth: 0,
+    gap: spacing.lg,
+  },
+  right: {
+    flex: 1,
+    minWidth: 0,
+    gap: spacing.lg,
   },
   stack: {
-    flexDirection: 'column',
+    gap: spacing.lg,
   },
-  wide: {
-    flex: 3,
-  },
-  narrow: {
-    flex: 2,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  actionsCard: {
     gap: spacing.md,
-    marginTop: spacing.xs,
+    padding: spacing.lg,
+    borderRadius: radius.lg + 4,
+    borderWidth: 1,
+    borderColor: colors.divider,
+    backgroundColor: colors.background,
   },
-  sectionTitle: {
-    ...typography.sectionTitle,
-    color: colors.textMuted,
-  },
-  sectionMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  metaText: {
-    ...typography.helper,
-    color: colors.textSecondary,
-  },
-  cards: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  cardsWrap: {
-    flexWrap: 'wrap',
-  },
-  cardCellRow: {
-    flex: 1,
-  },
-  cardCellWrap: {
-    flexBasis: '23%',
-    flexGrow: 1,
-  },
-  flowNote: {
-    ...typography.helper,
-    color: colors.textSecondary,
+  donutBox: {
+    padding: spacing.lg,
+    borderRadius: radius.lg + 2,
+    borderWidth: 1,
+    borderColor: colors.divider,
   },
 });

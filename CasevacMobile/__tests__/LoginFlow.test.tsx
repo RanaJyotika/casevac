@@ -72,6 +72,7 @@ test('shows the Jeevan login screen with only the expected controls', async () =
   expect(text).toContain('JEEVAN');
   expect(text).toContain('Medic Login');
   expect(text).toContain('Forgot Password?');
+  expect(text).toContain('Emergency Record');
   expect(text).toContain('Demo mode');
   expect(findInput(tree, 'User ID')).toBeDefined();
   expect(findInput(tree, 'Password').props.secureTextEntry).toBe(true);
@@ -86,16 +87,24 @@ test('validates empty fields without signing in', async () => {
   const text = allText(tree);
   expect(text).toContain('Enter your user ID.');
   expect(text).toContain('Enter your password.');
-  expect(text).not.toContain('CASUALTY OVERVIEW');
+  expect(text).not.toContain('Operational Snapshot');
 });
 
-test('rejects unknown credentials', async () => {
+test('offline, an account never signed in on this tablet is refused', async () => {
   const tree = await renderApp();
   await signIn(tree, 'MED-OTHER-99', 'wrong-password');
   const text = allText(tree);
   expect(text).toContain('LOGIN FAILED');
-  expect(text).toContain('User ID or password not recognised.');
-  expect(text).not.toContain('CASUALTY OVERVIEW');
+  expect(text).toContain('must be done online at base camp');
+  expect(text).not.toContain('Operational Snapshot');
+});
+
+test('shows Offline when the base server cannot be reached', async () => {
+  const tree = await renderApp();
+  await ReactTestRenderer.act(async () => {
+    await wait(10);
+  });
+  expect(allText(tree)).toContain('Offline');
 });
 
 test('shows and hides the password', async () => {
@@ -110,7 +119,7 @@ test('shows and hides the password', async () => {
   expect(findInput(tree, 'Password').props.secureTextEntry).toBe(true);
 });
 
-test('Forgot Password only explains that reset is not available yet', async () => {
+test('Forgot Password explains how to get a new password', async () => {
   const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   const tree = await renderApp();
   await ReactTestRenderer.act(async () => {
@@ -118,7 +127,7 @@ test('Forgot Password only explains that reset is not available yet', async () =
   });
   expect(alertSpy).toHaveBeenCalledWith(
     'Forgot password',
-    expect.stringContaining('not available yet'),
+    expect.stringContaining('reset your password'),
   );
   expect(allText(tree)).toContain('Medic Login');
   alertSpy.mockRestore();
@@ -128,7 +137,32 @@ test('demo account opens the Home screen', async () => {
   const tree = await renderApp();
   await signIn(tree, 'med-demo-01', '1234');
   const text = allText(tree);
-  expect(text).toContain('CASUALTY OVERVIEW');
-  expect(text).toContain('Scan Patient QR');
-  expect(text).toContain('Cpl. R. Demo · Team A');
+  expect(text).toContain('Operational Snapshot');
+  expect(text).toContain('Scan QR Tag');
+  expect(text).toContain('Cpl. R. Demo');
+});
+
+test('Emergency Record asks for confirmation, then opens the app unverified', async () => {
+  const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  const tree = await renderApp();
+  await ReactTestRenderer.act(async () => {
+    findButton(tree, 'Emergency Record').props.onPress();
+  });
+  expect(alertSpy).toHaveBeenCalledWith(
+    'Start emergency record?',
+    expect.stringContaining('without signing in'),
+    expect.any(Array),
+  );
+  // Nothing opens until the medic confirms.
+  expect(allText(tree)).toContain('Medic Login');
+
+  const buttons = alertSpy.mock.calls[0][2] as { text: string; onPress?: () => unknown }[];
+  const start = buttons.find(b => b.text === 'Start emergency record');
+  await ReactTestRenderer.act(async () => {
+    await start?.onPress?.();
+  });
+  const text = allText(tree);
+  expect(text).toContain('Operational Snapshot');
+  expect(text).toContain('EMERGENCY ACCESS');
+  alertSpy.mockRestore();
 });

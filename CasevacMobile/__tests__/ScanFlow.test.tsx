@@ -12,8 +12,9 @@ import { ed25519 } from '@noble/curves/ed25519.js';
 import App from '../App';
 import { asciiBytes } from '../src/services/qr/base64url';
 
-jest.mock('react-native-safe-area-context', () =>
-  require('react-native-safe-area-context/jest/mock').default,
+jest.mock(
+  'react-native-safe-area-context',
+  () => require('react-native-safe-area-context/jest/mock').default,
 );
 
 // react-native-camera-kit is mocked globally in jest.setup.js.
@@ -145,7 +146,7 @@ async function openScanner(): Promise<Renderer> {
     await press(tree, 'Login');
     await wait(500);
   });
-  await press(tree, 'Scan Patient QR');
+  await press(tree, 'Scan patient tag');
   await ReactTestRenderer.act(async () => {
     await wait(20);
   });
@@ -175,13 +176,17 @@ test('rejects a foreign QR, then identifies a genuine dashboard credential', asy
   expect(text).toContain('Credential verified');
   expect(text).toContain('Identity found on this tablet');
   expect(text).toContain('PAT-00042');
-  expect(text).toContain('Sepoy Test Soldier');
+  expect(text).toContain('Test Soldier');
+  expect(text).toContain('Sepoy');
   expect(text).toContain('O · Rh positive');
-  expect(text).toContain('No evacuation records for this patient');
+  expect(text).toContain('PREVIOUS HISTORY');
+  expect(text).toContain('No previous record found');
+  // Signature / revocation internals are no longer shown on screen 3.
+  expect(text).not.toContain('Revocation check');
 
   // Back returns to Home (the scan screen was replaced, not stacked).
   await press(tree, 'Back');
-  expect(allText(tree)).toContain('CASUALTY OVERVIEW');
+  expect(allText(tree)).toContain('Operational Snapshot');
 });
 
 test('rejects a tampered credential and ignores the same code right after Scan again', async () => {
@@ -204,11 +209,21 @@ test('shows a verified credential without inventing details when it is not provi
   );
   await read(tree, unprovisioned);
   const text = allText(tree);
-  expect(text).toContain('Credential Verified — Patient Details Unavailable Offline');
-  expect(text).toContain('55555555-5555-4555-8555-555555555555');
-  expect(text).toContain('Unknown — credential not in this tablet’s directory');
+  expect(text).toContain(
+    'Credential Verified — Patient Details Unavailable Offline',
+  );
   expect(text).not.toContain('PAT-00042');
   expect(text).not.toContain('Test Soldier');
+
+  // No details: Register New Patient is offered and keeps the wristband link.
+  await press(tree, 'Register New Patient');
+  expect(allText(tree)).toContain(
+    'The scanned wristband is genuine but has no details on this tablet.',
+  );
+  await press(tree, 'Save & Continue');
+  const after = allText(tree);
+  expect(after).toContain('Unidentified casualty');
+  expect(after).toContain('Registered on this tablet');
 });
 
 test('explains a permanently denied camera permission on Android', async () => {

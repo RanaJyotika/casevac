@@ -166,6 +166,22 @@ export interface SoldierInput {
   nextOfKinPhone?: string;
   contactPhone?: string;
   status?: string;
+  /** JPEG data URL produced by the form's photo field, or empty. */
+  photo?: string;
+}
+
+/** Upper bound for a stored ID photo data URL (≈ 48 KB of JPEG). */
+export const PHOTO_MAX_LENGTH = 65_000;
+const PHOTO_PATTERN = /^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/;
+
+function validatePhoto(c: { errors: Record<string, string> }, raw: string | undefined): string | null {
+  const value = (raw ?? "").trim();
+  if (!value) return null;
+  if (value.length > PHOTO_MAX_LENGTH || !PHOTO_PATTERN.test(value)) {
+    c.errors.photo = "The photo could not be saved. Choose it again (JPEG or PNG).";
+    return null;
+  }
+  return value;
 }
 
 export interface ValidSoldier {
@@ -195,6 +211,7 @@ export function validateSoldier(input: SoldierInput, opts: { requireServiceNumbe
   const nokPhone = c.phone("nextOfKinPhone", input.nextOfKinPhone, "Next of kin phone");
   const contactPhone = c.phone("contactPhone", input.contactPhone, "Contact phone");
   const status = c.choice("status", input.status, STATUS_OPTIONS, "ACTIVE", "Status");
+  const photo = validatePhoto(c, input.photo);
 
   if ((nokRel || nokPhone) && !nokName) {
     c.errors.nextOfKinName = "Enter the next of kin name, or clear the other next-of-kin fields.";
@@ -218,6 +235,7 @@ export function validateSoldier(input: SoldierInput, opts: { requireServiceNumbe
         medicalCategory,
         identificationMarks,
         nextOfKin: { name: nokName, relationship: nokRel, phone: nokPhone },
+        photo,
       },
     },
   };

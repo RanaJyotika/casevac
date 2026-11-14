@@ -3,13 +3,16 @@
  *
  * Tablet landscape split layout (UI_DESIGN_GUIDELINES.md §5):
  *   left  — Jeevan branding and short instructions
- *   right — bordered login box: User ID, Password, Login, Forgot Password
+ *   right — bordered login box: User ID, Password, Login, Forgot Password,
+ *           and an Emergency Record button below it
  * Falls back to a stacked layout if the window is narrow or portrait.
  *
- * Demo authentication only (services/demoAuth.ts) and labelled as such.
- * Forgot Password is a placeholder until account recovery exists.
+ * Sign-in (services/auth/signIn.ts): credentials are issued on the admin
+ * dashboard. The first sign-in must be online; the tablet then saves a hashed
+ * copy so later sign-ins work offline. Emergency Record opens the app without
+ * signing in (forgotten password / no network), marked as unverified.
  */
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -33,8 +36,13 @@ import {
   StatusBadge,
   UserIcon,
 } from '../components';
-import { MOCK_CONNECTIVITY } from '../data/mockData';
-import { demoSignIn } from '../services/demoAuth';
+import {
+  getDefaultAuthDeps,
+  signIn,
+  startEmergencySession,
+  syncSavedSignIns,
+  type AuthDeps,
+} from '../services/auth/signIn';
 import {
   colors,
   fonts,
@@ -50,20 +58,31 @@ const APP_NAME = 'Jeevan';
 
 const INSTRUCTIONS = [
   'Sign in with the user ID and password issued by your unit registrar.',
-  'Jeevan works without a network. Records are saved on this tablet.',
+  'Your first sign-in must be online at base camp. After that you can sign in on this tablet without a network.',
+  'Cannot sign in? Use Emergency Record to start casualty care at once.',
   'Demonstration build: use fictional casualty data only.',
 ];
 
 interface LoginScreenProps {
   onSignIn: (clinician: Clinician) => void;
+  /** Emergency Record: opens the app without signing in. */
+  onEmergencyAccess: (session: Clinician) => void;
+  /** Injected in tests; defaults to the dashboard server + tablet storage. */
+  authDeps?: AuthDeps;
 }
+
+type Connectivity = 'checking' | 'online' | 'offline';
 
 interface FieldErrors {
   userId?: string;
   password?: string;
 }
 
-export function LoginScreen({ onSignIn }: LoginScreenProps) {
+export function LoginScreen({
+  onSignIn,
+  onEmergencyAccess,
+  authDeps,
+}: LoginScreenProps) {
   const { width, height } = useWindowDimensions();
   const split = width >= layout.splitBreakpoint && width > height;
   // Panels run edge to edge; insets (status bar, cutout) pad their content.
@@ -76,6 +95,27 @@ export function LoginScreen({ onSignIn }: LoginScreenProps) {
   const [authError, setAuthError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const passwordRef = useRef<TextInputInstance>(null);
+  const [connectivity, setConnectivity] = useState<Connectivity>('checking');
+  const deps = authDeps ?? getDefaultAuthDeps();
+
+  // Check the base server once; when reachable, report offline sign-ins and
+  // drop saved copies the dashboard has revoked.
+  useEffect(() => {
+    let cancelled = false;
+    deps.server.isReachable().then(reachable => {
+      if (cancelled) {
+        return;
+      }
+      setConnectivity(reachable ? 'online' : 'offline');
+      if (reachable) {
+        syncSavedSignIns(deps);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once per mount
+  }, []);
 
   const validate = (): FieldErrors => {
     const errors: FieldErrors = {};
@@ -101,12 +141,15 @@ export function LoginScreen({ onSignIn }: LoginScreenProps) {
 
     setSubmitting(true);
     try {
-      const clinician = await demoSignIn(userId, password);
-      if (clinician) {
+      const result = await signIn(userId, password, deps);
+      if (result.ok) {
         setPassword('');
-        onSignIn(clinician);
+        if (result.clinician.signInMode === 'online') {
+          setConnectivity('online');
+        }
+        onSignIn(result.clinician);
       } else {
-        setAuthError('User ID or password not recognised.');
+        setAuthError(result.message);
       }
     } finally {
       setSubmitting(false);
@@ -116,11 +159,34 @@ export function LoginScreen({ onSignIn }: LoginScreenProps) {
   const handleForgotPassword = () => {
     Alert.alert(
       'Forgot password',
-      'Password reset is not available yet. Contact your unit registrar.',
+      'Ask your unit registrar to reset your password on the admin dashboard, then sign in once while online at base camp.\n\nIf a casualty needs care now, use Emergency Record.',
     );
   };
 
-  const connectivity = MOCK_CONNECTIVITY === 'offline' ? 'Offline' : 'Online';
+  const handleEmergency = () => {
+    Alert.alert(
+      'Start emergency record?',
+      'Opens Jeevan without signing in. Records are marked as unverified emergency entries and this access is logged on the tablet.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Start emergency record',
+          style: 'destructive',
+          onPress: async () => {
+            setPassword('');
+            onEmergencyAccess(await startEmergencySession());
+          },
+        },
+      ],
+    );
+  };
+
+  const connectivityLabel =
+    connectivity === 'checking'
+      ? 'Checking…'
+      : connectivity === 'online'
+      ? 'Online'
+      : 'Offline';
 
   return (
     <View style={styles.root}>
@@ -186,7 +252,10 @@ export function LoginScreen({ onSignIn }: LoginScreenProps) {
             ]}
           >
             <View style={styles.statusRow}>
-              <StatusBadge label={connectivity} />
+              <StatusBadge
+                label={connectivityLabel}
+                tone={connectivity === 'online' ? 'success' : 'neutral'}
+              />
             </View>
 
             <View style={styles.formCenter}>
@@ -276,7 +345,7 @@ export function LoginScreen({ onSignIn }: LoginScreenProps) {
                   onPress={handleForgotPassword}
                   accessibilityRole="button"
                   accessibilityLabel="Forgot Password?"
-                  accessibilityHint="Password reset is not available yet"
+                  accessibilityHint="Explains how to get a new password"
                   style={({ pressed }) => [
                     styles.forgot,
                     pressed && styles.forgotPressed,
@@ -284,6 +353,26 @@ export function LoginScreen({ onSignIn }: LoginScreenProps) {
                 >
                   <Text style={styles.forgotText}>Forgot Password?</Text>
                 </Pressable>
+              </View>
+
+              <View style={styles.emergencyBox}>
+                <Pressable
+                  onPress={handleEmergency}
+                  disabled={submitting}
+                  accessibilityRole="button"
+                  accessibilityLabel="Emergency Record"
+                  accessibilityHint="Start a casualty record without signing in"
+                  style={({ pressed }) => [
+                    styles.emergencyButton,
+                    pressed && styles.emergencyButtonPressed,
+                  ]}
+                >
+                  <Text style={styles.emergencyText}>Emergency Record</Text>
+                </Pressable>
+                <Text style={styles.emergencyHint}>
+                  Forgot your password or cannot sign in? Start casualty care
+                  without signing in.
+                </Text>
               </View>
 
               <Text style={styles.demo}>
@@ -458,6 +547,34 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: '600',
     textDecorationLine: 'underline',
+  },
+  emergencyBox: {
+    width: '100%',
+    maxWidth: 480,
+    gap: spacing.sm,
+  },
+  emergencyButton: {
+    minHeight: layout.buttonHeight,
+    borderRadius: radius.md,
+    borderWidth: 2,
+    borderColor: colors.error,
+    backgroundColor: colors.errorSurface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.lg,
+  },
+  emergencyButtonPressed: {
+    backgroundColor: colors.errorBorder,
+  },
+  emergencyText: {
+    ...typography.button,
+    color: colors.error,
+    letterSpacing: 0.5,
+  },
+  emergencyHint: {
+    ...typography.helper,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
   demo: {
     ...typography.helper,

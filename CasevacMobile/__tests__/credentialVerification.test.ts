@@ -17,7 +17,10 @@ import {
   StaticTrustStore,
   type ParsedDirectory,
 } from '../src/services/identity/bundledDemoProvisioning';
-import type { CredentialRecord, PatientIdentity } from '../src/services/identity/types';
+import type {
+  CredentialRecord,
+  PatientIdentity,
+} from '../src/services/identity/types';
 import { asciiBytes, decodeBase64Url } from '../src/services/qr/base64url';
 import { parseCredentialPayload } from '../src/services/qr/credentialFormat';
 import { describeFailure } from '../src/services/qr/identificationMessages';
@@ -41,6 +44,9 @@ const PATIENT: PatientIdentity = {
   unit: '9 Demo Rifles',
   bloodGroup: 'O',
   rhFactor: 'POSITIVE',
+  sex: 'MALE',
+  dateOfBirth: null,
+  photo: null,
 };
 
 const CREDENTIAL: CredentialRecord = {
@@ -205,7 +211,8 @@ describe('identifyPatient (offline)', () => {
       });
       expect(result).toEqual({
         ok: false,
-        failure: status === 'REVOKED' ? 'CREDENTIAL_REVOKED' : 'CREDENTIAL_REPLACED',
+        failure:
+          status === 'REVOKED' ? 'CREDENTIAL_REVOKED' : 'CREDENTIAL_REPLACED',
         revokedAt: '2026-11-12T10:00:00.000Z',
       });
     }
@@ -245,12 +252,16 @@ describe('identifyPatient (offline)', () => {
     const sig = TEST_VECTOR.payload.split(':')[8];
     const flipped = (sig[0] === 'A' ? 'B' : 'A') + sig.slice(1);
     const alias =
-      sig.slice(0, -1) + String.fromCharCode(sig.charCodeAt(sig.length - 1) + 1);
+      sig.slice(0, -1) +
+      String.fromCharCode(sig.charCodeAt(sig.length - 1) + 1);
     for (const s of [flipped, alias]) {
-      const result = await identifyPatient(withField(TEST_VECTOR.payload, 8, s), {
-        trustStore,
-        directory: fullDirectory,
-      });
+      const result = await identifyPatient(
+        withField(TEST_VECTOR.payload, 8, s),
+        {
+          trustStore,
+          directory: fullDirectory,
+        },
+      );
       expect(result).toEqual({ ok: false, failure: 'INVALID_SIGNATURE' });
     }
   });
@@ -316,14 +327,36 @@ describe('provisioning file parsing', () => {
     const keys = parseTrustedKeys({
       format: 'casevac.trusted-issuer-keys',
       keys: [
-        { keyId: 'good-key', issuer: 'CASEVAC_ADMIN', algorithm: 'Ed25519', publicKey: TEST_VECTOR.publicKey },
-        { keyId: 'short', issuer: 'CASEVAC_ADMIN', algorithm: 'Ed25519', publicKey: 'AQID' },
-        { keyId: 'rsa', issuer: 'CASEVAC_ADMIN', algorithm: 'RSA', publicKey: TEST_VECTOR.publicKey },
-        { keyId: 'Bad Key', issuer: 'CASEVAC_ADMIN', algorithm: 'Ed25519', publicKey: TEST_VECTOR.publicKey },
+        {
+          keyId: 'good-key',
+          issuer: 'CASEVAC_ADMIN',
+          algorithm: 'Ed25519',
+          publicKey: TEST_VECTOR.publicKey,
+        },
+        {
+          keyId: 'short',
+          issuer: 'CASEVAC_ADMIN',
+          algorithm: 'Ed25519',
+          publicKey: 'AQID',
+        },
+        {
+          keyId: 'rsa',
+          issuer: 'CASEVAC_ADMIN',
+          algorithm: 'RSA',
+          publicKey: TEST_VECTOR.publicKey,
+        },
+        {
+          keyId: 'Bad Key',
+          issuer: 'CASEVAC_ADMIN',
+          algorithm: 'Ed25519',
+          publicKey: TEST_VECTOR.publicKey,
+        },
       ],
     });
     expect(keys.map(k => k.keyId)).toEqual(['good-key']);
-    expect(parseTrustedKeys({ format: 'something-else', keys: [] })).toEqual([]);
+    expect(parseTrustedKeys({ format: 'something-else', keys: [] })).toEqual(
+      [],
+    );
 
     const directory = parseDirectory({
       format: 'casevac.identity-directory',
@@ -334,7 +367,10 @@ describe('provisioning file parsing', () => {
     });
     expect(directory.patients).toHaveLength(1);
     expect(directory.credentials).toHaveLength(1);
-    expect(parseDirectory({ format: 'casevac.identity-directory', formatVersion: 1 }).patients).toEqual([]);
+    expect(
+      parseDirectory({ format: 'casevac.identity-directory', formatVersion: 1 })
+        .patients,
+    ).toEqual([]);
   });
 
   it('parses the bundled demo provisioning files written by the dashboard', () => {
@@ -343,7 +379,9 @@ describe('provisioning file parsing', () => {
     expect(directory.generatedAt).not.toBeNull();
     // Every patient in the directory holds an active credential.
     const active = new Set(
-      directory.credentials.filter(c => c.status === 'ACTIVE').map(c => c.patientId),
+      directory.credentials
+        .filter(c => c.status === 'ACTIVE')
+        .map(c => c.patientId),
     );
     for (const p of directory.patients) {
       expect(active.has(p.patientId)).toBe(true);

@@ -10,7 +10,7 @@
 import { getIssuerKey } from "../crypto/qr-issuer";
 import { getRepository } from "../data";
 import { QR_ISSUER } from "../domain/qr-format";
-import type { BloodGroup, CredentialStatus, RhFactor } from "../domain/types";
+import type { BloodGroup, CredentialStatus, RhFactor, Sex } from "../domain/types";
 
 export interface DirectoryPatient {
   /** Internal Person UUID — the patientId inside signed QR credentials. */
@@ -21,6 +21,11 @@ export interface DirectoryPatient {
   unit: string;
   bloodGroup: BloodGroup;
   rhFactor: RhFactor;
+  sex: Sex;
+  /** ISO date (YYYY-MM-DD) or null; the tablet shows age from it. */
+  dateOfBirth: string | null;
+  /** Small JPEG data URL or null. Delivered only via authenticated sign-in. */
+  photo: string | null;
 }
 
 export interface DirectoryCredential {
@@ -90,6 +95,9 @@ export async function buildIdentityDirectory(): Promise<IdentityDirectory> {
       unit: p.unit,
       bloodGroup: p.soldier.bloodGroup,
       rhFactor: p.soldier.rhFactor,
+      sex: p.soldier.sex,
+      dateOfBirth: p.soldier.dateOfBirth,
+      photo: p.soldier.photo ?? null,
     });
   }
   patients.sort((a, b) => a.displayId.localeCompare(b.displayId));

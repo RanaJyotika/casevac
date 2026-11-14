@@ -8,21 +8,27 @@
  */
 import React, { useCallback, useEffect, useState } from 'react';
 import { BackHandler } from 'react-native';
+import {
+  AssessmentScreen,
+  type AssessmentPatient,
+} from '../screens/AssessmentScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { LoginScreen } from '../screens/LoginScreen';
-import { PatientIdentificationScreen } from '../screens/PatientIdentificationScreen';
+import {
+  PatientIdentificationScreen,
+  type Identification,
+} from '../screens/PatientIdentificationScreen';
+import { RegisterPatientScreen } from '../screens/RegisterPatientScreen';
 import { ScanPatientScreen } from '../screens/ScanPatientScreen';
-import type { ManualIdentification } from '../services/identity/manualLookup';
-import type { VerifiedIdentification } from '../services/qr/identifyPatient';
+import type { FieldLink } from '../services/patients/fieldRegistry';
 import type { Clinician } from '../types';
 
 type Screen =
   | { name: 'Home' }
   | { name: 'ScanPatient' }
-  | {
-      name: 'PatientIdentification';
-      result: VerifiedIdentification | ManualIdentification;
-    };
+  | { name: 'PatientIdentification'; result: Identification }
+  | { name: 'RegisterPatient'; link: FieldLink }
+  | { name: 'Assessment'; patient: AssessmentPatient };
 
 interface NavState {
   clinician: Clinician | null;
@@ -65,7 +71,12 @@ export function RootNavigator() {
 
   if (!nav.clinician) {
     return (
-      <LoginScreen onSignIn={clinician => setNav({ clinician, stack: HOME })} />
+      <LoginScreen
+        onSignIn={clinician => setNav({ clinician, stack: HOME })}
+        onEmergencyAccess={session =>
+          setNav({ clinician: session, stack: HOME })
+        }
+      />
     );
   }
 
@@ -78,6 +89,9 @@ export function RootNavigator() {
           onIdentified={result =>
             replace({ name: 'PatientIdentification', result })
           }
+          onRegisterPatient={() =>
+            replace({ name: 'RegisterPatient', link: {} })
+          }
         />
       );
     case 'PatientIdentification':
@@ -85,7 +99,31 @@ export function RootNavigator() {
         <PatientIdentificationScreen
           result={screen.result}
           onBack={pop}
-          onScanAnother={() => replace({ name: 'ScanPatient' })}
+          onRegisterNew={link => push({ name: 'RegisterPatient', link })}
+          onStartEvacuation={patient => push({ name: 'Assessment', patient })}
+        />
+      );
+    case 'Assessment':
+      return (
+        <AssessmentScreen
+          patient={screen.patient}
+          recordedBy={nav.clinician.id}
+          onCancel={pop}
+          onSaved={pop}
+        />
+      );
+    case 'RegisterPatient':
+      return (
+        <RegisterPatientScreen
+          registeredBy={nav.clinician.id}
+          link={screen.link}
+          onCancel={pop}
+          onRegistered={patient =>
+            replace({
+              name: 'PatientIdentification',
+              result: { ok: true, method: 'FIELD', patient },
+            })
+          }
         />
       );
     case 'Home':
@@ -97,6 +135,7 @@ export function RootNavigator() {
           onPatientIdentified={result =>
             push({ name: 'PatientIdentification', result })
           }
+          onRegisterPatient={link => push({ name: 'RegisterPatient', link })}
           onSignOut={() => setNav({ clinician: null, stack: HOME })}
         />
       );

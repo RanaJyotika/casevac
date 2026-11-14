@@ -25,14 +25,14 @@ export const colors = {
   textMuted: '#4A535D',
   placeholder: '#6E7883',
 
-  // Primary action (restrained blue accent)
-  primary: '#244B66',
-  primaryPressed: '#1A3A50',
-  primaryDisabled: '#8FA3B2',
-  /** Selected navigation item background. */
-  primarySurface: '#E3ECF3',
+  // Primary action — clear operational blue (Home UI v3, 13 Nov 2026)
+  primary: '#1D4ED8',
+  primaryPressed: '#1E40AF',
+  primaryDisabled: '#93A9E0',
+  /** Tinted surface for secondary blue actions and selected items. */
+  primarySurface: '#EAF0FD',
   onPrimary: '#FFFFFF',
-  onPrimaryMuted: '#D9E4EC',
+  onPrimaryMuted: '#DCE6FB',
 
   // Status tones (text / surface / border)
   error: '#AA3030',
@@ -80,6 +80,17 @@ export const triage = {
   },
 } as const;
 
+/**
+ * Tinted triage pills and tiles: light surface + dark text of the same hue,
+ * always shown with the category word (contrast ≥ 4.5:1 on the surface).
+ */
+export const triageTint = {
+  RED: { surface: '#FDECEC', border: '#F5C2C2', text: '#B42318' },
+  YELLOW: { surface: '#FEF5DC', border: '#F3DC9A', text: '#7A5200' },
+  GREEN: { surface: '#E7F5EC', border: '#B7DEC3', text: '#1E6B35' },
+  BLACK: { surface: '#ECEEF2', border: '#CDD3DB', text: '#1C2630' },
+} as const;
+
 /** Base spacing scale: 4, 8, 12, 16, 24, 32 */
 export const spacing = {
   xs: 4,
@@ -103,8 +114,9 @@ export const touchTarget = 48;
 
 /** Tablet layout system v1 (UI_DESIGN_GUIDELINES.md §4). */
 export const layout = {
-  topBarHeight: 64,
-  sidebarWidth: 240,
+  /** Compact chrome: more room for casualty content on an 800 dp screen. */
+  topBarHeight: 56,
+  sidebarWidth: 208,
   /** Icon-and-label sidebar used when the window is narrower than navCollapseBelow. */
   sidebarCompactWidth: 96,
   navCollapseBelow: 1200,

@@ -40,7 +40,7 @@
 
 | ID | Requirement | Priority | Status / acceptance evidence |
 | --- | --- | --- | --- |
-| FR-22 | App runs landscape-only on Android tablets (baseline 1280 × 800 dp) with left navigation + content layout | P0 | Baseline; login done; see NFR-10 for the Android 16 caveat |
+| FR-22 | App runs on Android tablets in landscape (primary, baseline 1280 × 800 dp) and portrait (800 × 1280 dp) with left navigation + content layout | P0 | Revised 13 Nov 2026: portrait added; login and Home verified in both |
 | FR-23 | Home shows summary cards: Total, RED, YELLOW, GREEN, BLACK, Active Evacuations, Pending Handover, Completed Evacuations | P0 | Baseline; counts match stored records |
 | FR-24 | Home shows casualties by company as a stacked bar chart (6 companies; segments by triage category) | P0 | Baseline; company list to be confirmed |
 | FR-25 | Home shows casualties by triage category (horizontal bar or donut) with counts | P0 | Baseline; horizontal bar preferred |
@@ -86,7 +86,7 @@ The supplied image depicts nine operational request lines: (1) pickup grid/GPS/m
 | NFR-07 | Traceability | event_id, author, observed_at, recorded_at | Signed/authenticated events and full audit trail |
 | NFR-08 | Hardware | Test QR scanner on one Android device | Validate supported Android models and transfer radios |
 | NFR-09 | Handover safety | Distinguish saved/transfer pending/acknowledged | Verifiable import, read-back and recipient acknowledgement |
-| NFR-10 | Tablet landscape | Landscape requested on all screens; layouts verified at 1280 × 800 and 960 × 600 dp; stack if shown in portrait | Android 16+ may ignore the lock (API 36 opt-out ends at API 37); device-management rotation lock if strict landscape is mandatory |
+| NFR-10 | Tablet orientation | Both orientations supported; layouts verified at 1280 × 800 (landscape) and 800 × 1280 dp (portrait), usable at 960 × 600 dp | No orientation lock (Android 16+ ignores locks on large screens); device-management rotation lock if strict landscape is ever mandatory |
 | NFR-11 | Readability | Client type scale: titles 24–28, headings 18–22, card values 24–32, inputs/buttons 16–18, tables 14–15, helper ≥ 12 | Field test at arm's length and in bright light |
 | NFR-12 | Dashboard honesty | Counts labelled "On this tablet" with update time | Force-wide totals only from a synchronised backend |
 | NFR-13 | Triage visibility | Colour always paired with text label and count | Accessibility and sunlight review |
@@ -130,5 +130,5 @@ The supplied image depicts nine operational request lines: (1) pickup grid/GPS/m
 - The six company identifiers (examples used: Alpha–Foxtrot) and whether company comes from registration or is entered per casualty.
 - Definitions of evacuation statuses for the dashboard (awaiting pickup, in transfer, handed over, completed) and how they relate to digital transfer states.
 - Whether dashboard figures should ever show force-wide totals (needs sync) or only the tablet's own records.
-- Target tablet models and Android versions; whether device management will enforce landscape rotation lock.
+- Target tablet models and Android versions. (Orientation: both supported since 13 Nov 2026; confirm with the client.)
 - Order of client screens 8 (Handover Details) and 9 (Prepare Evacuation).

@@ -1,6 +1,6 @@
 # CASEVAC — Application Flow
 
-**Scope:** QR-first medic Android **tablet** app (Jeevan, landscape-only), basic registration dashboard, Point A → Point B.  
+**Scope:** QR-first medic Android **tablet** app (Jeevan, landscape-first, portrait supported), basic registration dashboard, Point A → Point B.  
 **Key rule:** the patient QR is *identity only*. Cross-phone treatment history requires a separate validated transfer or previously synced cache.
 
 ## 1. Cross-system overview

@@ -1,19 +1,22 @@
 export { AppHeader } from './AppHeader';
-export { AppShell, type NavKey } from './AppShell';
+export { AppShell, type ShellStatus } from './AppShell';
+export { CompanyBars, TRIAGE_SHORT, TriageDonut } from './dashboard';
 export {
-  ChartCard,
-  CompanyStackedBarChart,
-  EvacuationFlow,
-  QuickActionTile,
-  RecentActivityTable,
-  SummaryCard,
-  TriageBadge,
-  TriageBarChart,
-  TriageLegend,
-} from './dashboard';
+  AlertCards,
+  Card,
+  EvacuationRows,
+  IdSearch,
+  PillToggle,
+  RecentRecordRows,
+  RegisterBar,
+  ScanCard,
+  SnapshotTiles,
+  StatusPill,
+  TriagePill,
+} from './home';
+export { Icon, type IconName } from './Icon';
 export { FormField } from './FormField';
 export { ListRow } from './ListRow';
-export { ManualPatientIdDialog } from './ManualPatientIdDialog';
 export { Notice } from './Notice';
 export { PrimaryButton } from './PrimaryButton';
 export { SecondaryButton } from './SecondaryButton';

@@ -12,3 +12,23 @@ jest.mock('react-native-camera-kit', () => {
       mockReact.createElement(View, { ...props, testID: 'qr-camera' }),
   };
 });
+
+/* Tablet storage: in-memory AsyncStorage. */
+jest.mock('@react-native-async-storage/async-storage', () =>
+  require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
+);
+
+/*
+ * No network in tests: the dashboard server is "unreachable" unless a test
+ * injects its own ServerClient. Individual tests may override global.fetch.
+ */
+beforeEach(() => {
+  global.fetch = jest.fn(() =>
+    Promise.reject(new TypeError('Network request failed')),
+  );
+});
+
+/* Native date/time pickers: tests drive them through DateTimePickerAndroid.open. */
+jest.mock('@react-native-community/datetimepicker', () => ({
+  DateTimePickerAndroid: { open: jest.fn(), dismiss: jest.fn() },
+}));

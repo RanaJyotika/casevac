@@ -1,13 +1,13 @@
 # Jeevan (CASEVAC) — UI Design Guidelines
 
 **Version:** 2.0 · **Revised:** 12 November 2026 (client update) · Supersedes v1 (phone, portrait).  
-**Design direction:** tablet-first, **landscape-only**, operational medical workflow UI. Formal, minimal, calm and
+**Design direction:** tablet-first, **landscape-first with full portrait support** (revised 13 Nov 2026), operational medical workflow UI. Formal, minimal, calm and
 clinical. **No gradients, animations, decorative illustrations or marketing-style cards.** English labels.  
 **App name:** Jeevan. "CASEVAC" remains the programme name in documents.
 
 ## 1. Client UI rules (12 Nov 2026)
 
-1. Landscape mode only.
+1. Landscape mode only. *(Revised 13 Nov 2026: portrait is also supported; landscape remains the primary design.)*
 2. Large, touch-friendly UI.
 3. Clear boxes and bordered sections.
 4. Font sizes readable from a distance.
@@ -33,17 +33,24 @@ clinical. **No gradients, animations, decorative illustrations or marketing-styl
 | Primary device | Android tablet, ~10 inch |
 | Design baseline | **1280 × 800 dp** (e.g. 1920 × 1200 px at 1.5× density, or 1280 × 800 px at 1×) |
 | Minimum supported | 960 × 600 dp (e.g. 1920 × 1200 px at 2×). Layouts must not break here. |
-| Orientation | Landscape only (`sensorLandscape`: either landscape direction) |
+| Orientation | Landscape (primary design) **and** portrait (800 × 1280 dp), following the device sensor (`fullSensor`) |
 | Units | Client "px" values below are applied as dp (sizes) and sp (text) at the baseline |
 
-**Platform caveat (verified, Android docs):** for apps targeting API 36, Android 16+ ignores `screenOrientation` on
-large screens (smallest width ≥ 600 dp). The app declares the temporary opt-out property
-`PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY`, which is **not honoured once the app targets API 37**. Therefore:
+**Both orientations (13 Nov 2026).** The orientation lock was removed: Android 16+ ignores orientation locks on
+large screens for apps targeting API 36+, so a portrait-proof layout was needed anyway. Every screen adapts to the
+window size rather than the orientation:
 
-- every screen must still be usable if the OS shows it in portrait or split-screen: split layouts stack vertically
-  below `splitBreakpoint` (900 dp) or when the window is taller than wide;
-- if strict landscape is mandatory, enforce it through the client's device management (kiosk / rotation lock).
-  **Client decision needed.**
+- **Landscape (1280 × 800 dp):** full sidebar with labels; Home shows the three first actions in one row and
+  Alerts + Casualty records in a right-hand column.
+- **Portrait (800 × 1280 dp):** compact icon sidebar (below `navCollapseBelow`, 1200 dp); Home shows Scan tag and
+  Enter ID side by side with Register casualty as a full-width bar below, then a single column with **Alerts directly
+  under the counts** (so a critical alert is visible without scrolling), then the charts and Casualty records.
+- Login stacks the branding panel above the form when the window is narrower than `splitBreakpoint` (900 dp) or
+  taller than wide.
+- Split-screen and any other window size fall back to the same rules.
+
+Strict landscape, if ever required again, should be enforced through the client's device management (kiosk /
+rotation lock), not by the app.
 
 ## 4. Layout system v1 (proposed — freeze on client approval)
 

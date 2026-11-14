@@ -12,7 +12,7 @@ The client now requires a **tablet-first, landscape-only** app named **Jeevan** 
 | --- | --- | --- |
 | 1 | Freeze the tablet layout system (sidebar 240 dp, top bar 64 dp, type scale, card style, chart placement) | Proposed values in UI guide §4 — **awaiting client approval** |
 | 2 | Redraw the client's 10 screens as landscape wireframes | To do |
-| 3 | Landscape lock + design tokens + tablet-sized inputs/buttons | Done (Android 16 caveat documented) |
+| 3 | Design tokens + tablet-sized inputs/buttons; landscape + portrait layouts (lock removed 13 Nov 2026) | Done (login and Home verified in both orientations) |
 | 4 | Login screen — split layout | Done |
 | 5 | App shell (TopBar, SideNav) + Home dashboard (cards, charts, activity, quick actions, manual ID entry) | Done with fictional demo data; real figures need evacuation storage with triage + company |
 | 6 | Restyle Scan QR and Patient Details into split layouts | After Home |

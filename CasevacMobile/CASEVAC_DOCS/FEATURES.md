@@ -1,6 +1,6 @@
 # CASEVAC — Feature Catalogue
 
-**Baseline:** QR-first, **Android tablet, landscape-only** ("Jeevan"), demonstration build. Client UI update 12 Nov 2026.  
+**Baseline:** QR-first, **Android tablet, landscape-first with portrait support** ("Jeevan"), demonstration build. Client UI update 12 Nov 2026.  
 **Legend:** `MVP-P0` essential for core demo, `MVP-P1` stretch, `SPIKE` technical experiment, `LATER` not in basic sprint.
 
 ## 1. Web Admin Dashboard
@@ -79,7 +79,7 @@ For the first UI implementation, keep explicit capability flags in development (
 
 ## 7. Tablet UI rules (client, 12 Nov 2026)
 
-Landscape only · large touch targets · bordered boxes and sections · font sizes readable from a distance · minimal
+Landscape (primary) and portrait · large touch targets · bordered boxes and sections · font sizes readable from a distance · minimal
 scrolling · side-by-side layouts · dashboard home · fast access under pressure. Details and frozen values:
 `UI_DESIGN_GUIDELINES.md` v2.
 

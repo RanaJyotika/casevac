@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import type { CredentialStatus, RecordStatus } from "@/lib/domain/types";
+import type { CredentialStatus, MobileAccountStatus, RecordStatus } from "@/lib/domain/types";
 
 export type Tone = "neutral" | "ok" | "warn" | "danger" | "info";
 
@@ -33,4 +33,11 @@ export function CredentialStatusBadge({ status, version }: { status: CredentialS
 
 export function DemoBadge() {
   return <Badge tone="warn">DEMO MODE</Badge>;
+}
+
+export function MobileLoginStatusBadge({ status }: { status: MobileAccountStatus | null }) {
+  if (status === "ACTIVATED") return <Badge tone="ok">App login used</Badge>;
+  if (status === "PENDING_FIRST_LOGIN") return <Badge tone="warn">App login not used yet</Badge>;
+  if (status === "REVOKED") return <Badge tone="danger">App login revoked</Badge>;
+  return <Badge>No app login</Badge>;
 }

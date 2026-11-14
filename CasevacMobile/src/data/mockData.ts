@@ -3,9 +3,9 @@
  * Fictional records for UI development. Not real personnel or patients.
  * Dashboard demo casualties live in data/demoCasualties.ts.
  */
-import type { Clinician, ConnectivityStatus } from '../types';
+import type { Clinician } from '../types';
 
-/** Fictional demo accounts accepted by services/demoAuth.ts */
+/** Fictional demo accounts accepted by services/auth/signIn.ts */
 export const DEMO_ACCOUNTS: ReadonlyArray<{
   password: string;
   clinician: Clinician;
@@ -21,9 +21,3 @@ export const DEMO_ACCOUNTS: ReadonlyArray<{
     },
   },
 ];
-
-/**
- * The app is offline-first. Until a connectivity check is implemented,
- * we report "offline" rather than falsely claiming a connection.
- */
-export const MOCK_CONNECTIVITY: ConnectivityStatus = 'offline';

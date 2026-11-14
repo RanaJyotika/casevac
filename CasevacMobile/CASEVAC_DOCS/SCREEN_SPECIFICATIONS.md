@@ -308,7 +308,7 @@ received or acknowledged (M14 status rules still apply).
 # UI test checklist
 
 - [ ] Navigation matches `APP_FLOW.md`.
-- [ ] Landscape layout at 1280 × 800 dp; still usable at 960 × 600 dp and if shown in portrait.
+- [ ] Landscape layout at 1280 × 800 dp and portrait layout at 800 × 1280 dp; still usable at 960 × 600 dp.
 - [ ] Triage always shown with colour **and** text label.
 - [ ] Patient and evacuation identifiers never conflated.
 - [ ] Invalid QR never displays an arbitrary person's profile.
