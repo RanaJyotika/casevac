@@ -4,7 +4,9 @@ buildscript {
         minSdkVersion = 24
         compileSdkVersion = 37
         targetSdkVersion = 36
-        ndkVersion = "27.1.12297006"
+        // Was 27.1.12297006 (React Native's default). Using the NDK already
+        // installed on this machine; revert if native builds misbehave.
+        ndkVersion = "30.0.16248370"
         kotlinVersion = "2.2.0"
     }
     repositories {

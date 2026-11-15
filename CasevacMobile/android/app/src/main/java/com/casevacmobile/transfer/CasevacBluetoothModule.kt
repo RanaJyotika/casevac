@@ -30,9 +30,9 @@ import java.util.UUID
  * Casualty handover between two CASEVAC tablets over Classic Bluetooth
  * (RFCOMM), plus a secure random source for the JS crypto layer.
  *
- * Receiver: requestEnable → setDeviceName("JEEWAN|MED-…|name") →
+ * Receiver: requestEnable → setDeviceName("JEEVAN|MED-…|name") →
  *   requestDiscoverable(120) → startServer. The sender's discovery lists only
- *   devices whose name starts with "JEEWAN|".
+ *   devices whose name starts with "JEEVAN|" (or "JEEWAN|" from older builds).
  * Sender: requestEnable → startDiscovery → connect(address). A secure RFCOMM
  *   connection to an unpaired tablet makes Android show its pairing dialog
  *   (the same 6-digit number on both screens) before any data moves.
@@ -147,13 +147,13 @@ class CasevacBluetoothModule(private val reactContext: ReactApplicationContext) 
     activity.startActivityForResult(intent, REQUEST_DISCOVERABLE)
   }
 
-  /** Renames this tablet (e.g. "JEEWAN|MED-00045|Maj Meera Iyer"); keeps the original. */
+  /** Renames this tablet (e.g. "JEEVAN|MED-00045|Maj Meera Iyer"); keeps the original. */
   @ReactMethod
   fun setDeviceName(name: String, promise: Promise) {
     val a = adapter ?: return promise.reject("E_UNSUPPORTED", "This tablet has no Bluetooth.")
     val prefs = reactContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
     val current = a.name ?: ""
-    if (!prefs.contains(PREF_ORIGINAL_NAME) && !current.startsWith("JEEWAN|") && !current.startsWith("CASEVAC|")) {
+    if (!prefs.contains(PREF_ORIGINAL_NAME) && !current.startsWith("JEEVAN|") && !current.startsWith("JEEWAN|") && !current.startsWith("CASEVAC|")) {
       prefs.edit().putString(PREF_ORIGINAL_NAME, current).apply()
     }
     promise.resolve(a.setName(name.take(60)))

@@ -247,7 +247,7 @@ export function ShareRecordScreen({
   const onReceiptScan = (text: string) => {
     const r = parseReceiptQr(text);
     if (!r) {
-      setReceiptError('That is not a Jeewan receipt QR.');
+      setReceiptError('That is not a Jeevan receipt QR.');
       return;
     }
     acceptReceipt(r, null);
@@ -371,7 +371,7 @@ export function ShareRecordScreen({
         setBt({
           kind: 'failed',
           message:
-            'Bluetooth permission was not given. Allow “Nearby devices” for Jeewan, or use QR.',
+            'Bluetooth permission was not given. Allow “Nearby devices” for Jeevan, or use QR.',
         });
         return;
       }
@@ -506,7 +506,7 @@ export function ShareRecordScreen({
                 onPress={startBluetooth}
                 accessibilityRole="button"
                 accessibilityLabel="Share via Bluetooth"
-                accessibilityHint="Finds the other Jeewan tablet nearby and sends the record"
+                accessibilityHint="Finds the other Jeevan tablet nearby and sends the record"
                 style={({ pressed }) => [
                   styles.choice,
                   pressed && styles.pressed,
@@ -515,7 +515,7 @@ export function ShareRecordScreen({
                 <Icon name="handover" size={40} color={colors.primary} />
                 <Text style={styles.choiceTitle}>Share via Bluetooth</Text>
                 <Text style={styles.choiceText}>
-                  Sends to a nearby Jeewan tablet. Uses radio — follow your
+                  Sends to a nearby Jeevan tablet. Uses radio — follow your
                   unit’s rules.
                 </Text>
               </Pressable>
@@ -635,7 +635,7 @@ export function ShareRecordScreen({
             ) : bt.kind === 'searching' ? (
               <View style={styles.gap}>
                 <Text style={styles.lead}>
-                  Choose the next team’s tablet. Only Jeewan tablets waiting in{' '}
+                  Choose the next team’s tablet. Only Jeevan tablets waiting in{' '}
                   <Text style={styles.bold}>Receive patient</Text> are listed.
                 </Text>
                 {devices.length === 0 ? (
@@ -645,8 +645,8 @@ export function ShareRecordScreen({
                     )}
                     <Text style={styles.meta}>
                       {bt.done
-                        ? 'No Jeewan tablet found. Check the other tablet is on Receive patient → Bluetooth and visible.'
-                        : 'Searching for nearby Jeewan tablets…'}
+                        ? 'No Jeevan tablet found. Check the other tablet is on Receive patient → Bluetooth and visible.'
+                        : 'Searching for nearby Jeevan tablets…'}
                     </Text>
                   </View>
                 ) : (

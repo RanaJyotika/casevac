@@ -79,7 +79,7 @@ async function cameraPermission(
   }
   const outcome = await PermissionsAndroid.request(p, {
     title: 'Camera access',
-    message: 'Jeewan uses the camera to read QR codes from another tablet.',
+    message: 'Jeevan uses the camera to read QR codes from another tablet.',
     buttonPositive: 'Allow',
     buttonNegative: 'Not now',
   });
@@ -150,7 +150,7 @@ export function QrScannerView({
           title="Camera permission needed"
           message={
             permission === 'blocked'
-              ? 'Camera access is turned off for Jeewan. Enable it in Android settings to read the QR code.'
+              ? 'Camera access is turned off for Jeevan. Enable it in Android settings to read the QR code.'
               : 'Allow camera access to read the QR code on the other tablet.'
           }
         />

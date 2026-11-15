@@ -13,6 +13,7 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DEMO_ACCOUNTS } from '../../data/mockData';
+import { loadSampleCasualties } from '../demo/sampleCasualties';
 import type { Clinician } from '../../types';
 import {
   getProvisioningStore,
@@ -66,12 +67,12 @@ export function clinicianFromProfile(
   };
 }
 
-function demoMatch(userId: string, password: string): Clinician | null {
+function demoMatch(userId: string, password: string) {
   const id = userId.trim().toUpperCase();
-  const match = DEMO_ACCOUNTS.find(
-    a => a.clinician.id === id && a.password === password,
+  return (
+    DEMO_ACCOUNTS.find(a => a.clinician.id === id && a.password === password) ??
+    null
   );
-  return match ? { ...match.clinician, signInMode: 'demo' } : null;
 }
 
 export async function signIn(
@@ -86,7 +87,15 @@ export async function signIn(
 
   if (demo) {
     await provisioning.loadSaved();
-    return { ok: true, clinician: demo, firstLogin: false };
+    const clinician: Clinician = { ...demo.clinician, signInMode: 'demo' };
+    if (demo.loadsSampleCasualties) {
+      try {
+        await loadSampleCasualties(clinician.id);
+      } catch {
+        // Demo convenience only: sign-in still succeeds without samples.
+      }
+    }
+    return { ok: true, clinician, firstLogin: false };
   }
 
   const cached = await deps.store.get(userId);

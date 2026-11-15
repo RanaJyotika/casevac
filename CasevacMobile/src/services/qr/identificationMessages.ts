@@ -16,7 +16,7 @@ export function describeFailure(result: FailedIdentification): FailureMessage {
       return {
         title: 'Unrecognised QR code',
         message:
-          'This is not a Jeewan patient wristband. No patient has been identified.',
+          'This is not a Jeevan patient wristband. No patient has been identified.',
       };
     case 'LEGACY_UNSIGNED':
       return {
@@ -28,13 +28,13 @@ export function describeFailure(result: FailedIdentification): FailureMessage {
       return {
         title: 'Unsupported QR version',
         message:
-          'This wristband uses a format this app does not support. Update the Jeewan app.',
+          'This wristband uses a format this app does not support. Update the Jeevan app.',
       };
     case 'MALFORMED':
       return {
         title: 'QR read error',
         message:
-          'The code could not be read as a valid Jeewan credential. Rescan; if it keeps failing, the wristband may be damaged.',
+          'The code could not be read as a valid Jeevan credential. Rescan; if it keeps failing, the wristband may be damaged.',
       };
     case 'UNKNOWN_ISSUER_KEY':
       return {

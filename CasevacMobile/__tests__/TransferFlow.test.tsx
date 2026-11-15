@@ -241,7 +241,7 @@ test('scanning a transfer QR with Scan QR Tag switches to Receive patient and ke
   // …and hands over to Receive patient instead of "not a wristband".
   expect(text).toContain('Receive Patient');
   expect(text).not.toContain('Unrecognised QR code');
-  expect(text).not.toContain('This is not a Jeewan patient wristband');
+  expect(text).not.toContain('This is not a Jeevan patient wristband');
   expect(text).toContain(`Reading… 1 of ${frames.length} parts`);
 
   for (const f of frames.slice(1)) {

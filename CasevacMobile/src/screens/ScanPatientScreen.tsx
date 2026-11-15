@@ -96,7 +96,7 @@ async function checkCameraPermission(
   }
   const outcome = await PermissionsAndroid.request(permission, {
     title: 'Camera access',
-    message: 'Jeewan uses the camera only to read patient wristband QR codes.',
+    message: 'Jeevan uses the camera only to read patient wristband QR codes.',
     buttonPositive: 'Allow',
     buttonNegative: 'Not now',
   });
@@ -335,8 +335,8 @@ export function ScanPatientScreen({
                 title="Camera permission needed"
                 message={
                   phase.blocked
-                    ? 'Camera access is turned off for Jeewan. Enable it in Android settings to scan wristbands.'
-                    : 'Jeewan needs the camera to read wristband QR codes. Nothing is recorded or stored from the camera.'
+                    ? 'Camera access is turned off for Jeevan. Enable it in Android settings to scan wristbands.'
+                    : 'Jeevan needs the camera to read wristband QR codes. Nothing is recorded or stored from the camera.'
                 }
               />
               {phase.blocked ? (

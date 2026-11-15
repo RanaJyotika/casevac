@@ -115,6 +115,7 @@ export function buildCasualtySummaries(
       injuredAt: a?.incident.occurredAt ?? null,
       recordedBy: base.recordedBy,
       assessmentId: a?.id,
+      patientKeys: base.patientKeys,
       mechanisms: a?.incident.mechanisms ?? [],
     });
   };

@@ -11,7 +11,8 @@
     "test": "vitest run",
     "issuer:keygen": "node scripts/generate-qr-issuer-key.mjs",
     "transfer:keygen": "node scripts/generate-transfer-key.mjs",
-    "mobile:provision": "tsx --env-file-if-exists=.env.local scripts/provision-mobile-demo.ts"
+    "mobile:provision": "tsx --env-file-if-exists=.env.local scripts/provision-mobile-demo.ts",
+    "demo:patients": "tsx --env-file-if-exists=.env.local scripts/seed-demo-patients.ts"
   },
   "dependencies": {
     "lucide-react": "^1.72.0",

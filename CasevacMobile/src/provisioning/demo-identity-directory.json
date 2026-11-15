@@ -1,9 +1,199 @@
 {
   "format": "casevac.identity-directory",
   "formatVersion": 2,
-  "generatedAt": "2026-11-12T08:42:25.627Z",
+  "generatedAt": "2026-11-15T11:28:07.635Z",
   "dataSource": "DEMO",
   "notice": "DEMONSTRATION EXPORT — fictional records only. Unencrypted. Not for operational use.",
-  "patients": [],
-  "credentials": []
+  "patients": [
+    {
+      "patientId": "144ec07b-a70e-4275-9f74-c2a12a337384",
+      "displayId": "PAT-00001",
+      "fullName": "Jyotika Rana",
+      "rank": "Lt",
+      "unit": "Alpha",
+      "bloodGroup": "O",
+      "rhFactor": "NEGATIVE",
+      "sex": "FEMALE",
+      "dateOfBirth": "2026-11-15",
+      "photo": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAAkGBwgHBgkIBwgKCgkLDRYPDQwMDRsUFRAWIB0iIiAdHx8kKDQsJCYxJx8fLT0tMTU3Ojo6Iys/RD84QzQ5Ojf/2wBDAQoKCg0MDRoPDxo3JR8lNzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzf/wAARCAA8ADwDASIAAhEBAxEB/8QAGwAAAQUBAQAAAAAAAAAAAAAAAgEDBQYHBAD/xAAxEAABAwMABwYFBQAAAAAAAAABAAIDBAURBhITFCExUSJBYXGBkTJDUnKxB0JzwdH/xAAWAQEBAQAAAAAAAAAAAAAAAAAAAQL/xAAWEQEBAQAAAAAAAAAAAAAAAAAAEQH/2gAMAwEAAhEDEQA/AMnDkWumQ5E3LiGsBc5xwABkkrTInOTbn+K0DR7QaARNqL4XOe7iKZjsBv3Ecc+AVtgtVpp2akVso2t/hafyMpVjECUJK2K56K2K4sdmiZTy90tP2CD5cj6hZppLo9U2GpDZTtaeTOymaODvA9D4JaIfK9lIkRB5Vr0AoWS10tfKMinwI8/We/0H5VRyrroVMGWuYDntyT7BNVeN58UUcplkYxh4ucGjzKhN4Uq6irbdWW3e4tTeXxvh7Ydrt1m9PMLLSQu1PPaqo0tSW7RrQew7IwfZQ13p4brbpqOX5jewfpcOR91N/qNPqaTyt6Qx/wBqsip4ojK3tcx7mPGHNOHDoQhXVdXB10qyzkZ3ke65Vpl5TejNdu1Q+B5w2b4fuH+qFARAIq/7wrFbdO7rQUcVKBSzsh4Quni1nR+RyFmtJdnBgZU5dj945+q7BcIT85vusqsdwutRcayWrq5NpPKcudy9FwVtxbSUr5ieIHYHV3cFES3WGNvB20PRqh62qlq360nIfC0cgrmDlcS5xJ4knJ8SkSpMKsiCNoQhG1AQCXVShEEDZCEhOuTbkDRSIihQf//Z"
+    },
+    {
+      "patientId": "894496f4-8829-4f40-97cc-dc113a8e893f",
+      "displayId": "PAT-00002",
+      "fullName": "Vikram Singh",
+      "rank": "Sepoy",
+      "unit": "Alpha",
+      "bloodGroup": "B",
+      "rhFactor": "POSITIVE",
+      "sex": "MALE",
+      "dateOfBirth": "1999-03-14",
+      "photo": null
+    },
+    {
+      "patientId": "5e6836ef-8259-4a53-8260-5119c97b3f0d",
+      "displayId": "PAT-00003",
+      "fullName": "Rohit Yadav",
+      "rank": "Naik",
+      "unit": "Bravo",
+      "bloodGroup": "O",
+      "rhFactor": "POSITIVE",
+      "sex": "MALE",
+      "dateOfBirth": "1995-07-22",
+      "photo": null
+    },
+    {
+      "patientId": "14d9a3c1-fd66-456c-b137-849bbea06b83",
+      "displayId": "PAT-00004",
+      "fullName": "Sunita Rawat",
+      "rank": "Lance Naik",
+      "unit": "Charlie",
+      "bloodGroup": "A",
+      "rhFactor": "NEGATIVE",
+      "sex": "FEMALE",
+      "dateOfBirth": "1997-11-05",
+      "photo": null
+    },
+    {
+      "patientId": "705c1e3c-bc3d-40c7-b58e-4d0abe07c850",
+      "displayId": "PAT-00005",
+      "fullName": "Manpreet Gill",
+      "rank": "Havildar",
+      "unit": "Delta",
+      "bloodGroup": "AB",
+      "rhFactor": "POSITIVE",
+      "sex": "MALE",
+      "dateOfBirth": "1988-01-30",
+      "photo": null
+    },
+    {
+      "patientId": "fa77b629-49a3-4262-9e19-68e59d86420a",
+      "displayId": "PAT-00006",
+      "fullName": "Imran Khan",
+      "rank": "Sepoy",
+      "unit": "Echo",
+      "bloodGroup": "B",
+      "rhFactor": "NEGATIVE",
+      "sex": "MALE",
+      "dateOfBirth": "2000-09-18",
+      "photo": null
+    },
+    {
+      "patientId": "6f97a88d-8c77-40b0-a342-75c5e1c321d8",
+      "displayId": "PAT-00007",
+      "fullName": "Deepak Thapa",
+      "rank": "Rifleman",
+      "unit": "Foxtrot",
+      "bloodGroup": "O",
+      "rhFactor": "NEGATIVE",
+      "sex": "MALE",
+      "dateOfBirth": "1998-04-09",
+      "photo": null
+    }
+  ],
+  "credentials": [
+    {
+      "credentialId": "3bc5f84f-5b87-4ec3-8cc5-60a94915bb6e",
+      "patientId": "144ec07b-a70e-4275-9f74-c2a12a337384",
+      "keyId": "dev-issuer-01",
+      "credentialVersion": 1,
+      "status": "ACTIVE",
+      "issuedAt": "2026-11-15T10:33:29.000Z",
+      "revokedAt": null
+    },
+    {
+      "credentialId": "c3c94e26-a3ad-464e-9d65-0f7412646632",
+      "patientId": "894496f4-8829-4f40-97cc-dc113a8e893f",
+      "keyId": "dev-issuer-01",
+      "credentialVersion": 1,
+      "status": "ACTIVE",
+      "issuedAt": "2026-11-15T11:09:10.000Z",
+      "revokedAt": null
+    },
+    {
+      "credentialId": "7e7e2d5d-f144-4f89-af8f-9b382fa5ade8",
+      "patientId": "5e6836ef-8259-4a53-8260-5119c97b3f0d",
+      "keyId": "dev-issuer-01",
+      "credentialVersion": 1,
+      "status": "ACTIVE",
+      "issuedAt": "2026-11-15T11:09:10.000Z",
+      "revokedAt": null
+    },
+    {
+      "credentialId": "205ef826-b949-46d2-81a9-02d43f223dc1",
+      "patientId": "14d9a3c1-fd66-456c-b137-849bbea06b83",
+      "keyId": "dev-issuer-01",
+      "credentialVersion": 1,
+      "status": "ACTIVE",
+      "issuedAt": "2026-11-15T11:09:10.000Z",
+      "revokedAt": null
+    },
+    {
+      "credentialId": "99f77b7d-7a41-4ff9-8821-1911a25e39ce",
+      "patientId": "705c1e3c-bc3d-40c7-b58e-4d0abe07c850",
+      "keyId": "dev-issuer-01",
+      "credentialVersion": 1,
+      "status": "ACTIVE",
+      "issuedAt": "2026-11-15T11:09:10.000Z",
+      "revokedAt": null
+    },
+    {
+      "credentialId": "14a4c702-c681-4582-8411-c0d738dc9658",
+      "patientId": "fa77b629-49a3-4262-9e19-68e59d86420a",
+      "keyId": "dev-issuer-01",
+      "credentialVersion": 1,
+      "status": "ACTIVE",
+      "issuedAt": "2026-11-15T11:09:10.000Z",
+      "revokedAt": null
+    },
+    {
+      "credentialId": "29a3331b-5b28-45a0-a1b2-98151794497a",
+      "patientId": "6f97a88d-8c77-40b0-a342-75c5e1c321d8",
+      "keyId": "dev-issuer-01",
+      "credentialVersion": 1,
+      "status": "ACTIVE",
+      "issuedAt": "2026-11-15T11:09:10.000Z",
+      "revokedAt": null
+    }
+  ],
+  "staff": [
+    {
+      "staffId": "f145c862-13e3-4100-9646-6cfb5eb9ad7c",
+      "displayId": "DOC-00001",
+      "fullName": "Neha Kapoor",
+      "rank": "Major",
+      "unit": "Forward Surgical Centre",
+      "role": "MEDICAL_OFFICER",
+      "roleLabel": "Doctor / Medical Officer",
+      "designation": "Surgeon, FSC",
+      "dateOfBirth": "1986-06-12",
+      "contactPhone": "+91 98100 50001",
+      "photo": null
+    },
+    {
+      "staffId": "91f01845-e540-4541-91ce-302f08e69e11",
+      "displayId": "DOC-00002",
+      "fullName": "Aditya Rao",
+      "rank": "Captain",
+      "unit": "Advanced Dressing Station",
+      "role": "MEDICAL_OFFICER",
+      "roleLabel": "Doctor / Medical Officer",
+      "designation": "Medical Officer, ADS",
+      "dateOfBirth": "1992-02-03",
+      "contactPhone": "+91 98100 50002",
+      "photo": null
+    },
+    {
+      "staffId": "e296dacf-bf64-4cb7-a612-43052a6f7704",
+      "displayId": "MED-00001",
+      "fullName": "Suresh Patil",
+      "rank": "Havildar",
+      "unit": "Regimental Aid Post",
+      "role": "MEDIC",
+      "roleLabel": "Medic",
+      "designation": "Nursing Assistant",
+      "dateOfBirth": "1990-10-21",
+      "contactPhone": "+91 98100 50003",
+      "photo": null
+    }
+  ]
 }

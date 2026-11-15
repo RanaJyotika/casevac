@@ -47,6 +47,7 @@ import {
   computeAlerts,
   computeDashboardStats,
   recordsBy,
+  type CasualtySummary,
   type HomeAlert,
 } from '../services/dashboard/dashboardStats';
 import { getActiveIdentityDirectory } from '../services/identity/provisioningStore';
@@ -66,6 +67,8 @@ interface HomeScreenProps {
   onReceivePatient: () => void;
   /** Reopen an evacuation (in its patient tab) at its next unsaved step. */
   onContinueEvacuation: (assessmentId: string) => void;
+  /** My Recent Records → the casualty's history (read only). */
+  onOpenRecord?: (row: CasualtySummary) => void;
   onSignOut: () => void;
   /** Injected in tests; defaults to the directory downloaded at sign-in. */
   directory?: IdentityDirectory;
@@ -91,6 +94,7 @@ export function HomeScreen({
   onRegisterPatient,
   onReceivePatient,
   onContinueEvacuation,
+  onOpenRecord,
   onSignOut,
   directory,
 }: HomeScreenProps) {
@@ -225,6 +229,7 @@ export function HomeScreen({
         rows={mine.slice(0, RECENT_ROWS)}
         now={now}
         compact={twoColumns}
+        onOpen={onOpenRecord}
         emptyText="You have not recorded any casualties yet."
       />
     </Card>

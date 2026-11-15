@@ -7,7 +7,7 @@ export function BrandMark({ subtitle = "Admin Console" }: { subtitle?: string })
         </svg>
       </span>
       <span className="flex flex-col leading-tight">
-        <span className="text-sm font-bold tracking-[0.1em] text-ink">CASEVAC</span>
+        <span className="text-sm font-bold tracking-[0.1em] text-ink">JEEVAN</span>
         <span className="text-xs text-muted">{subtitle}</span>
       </span>
     </div>

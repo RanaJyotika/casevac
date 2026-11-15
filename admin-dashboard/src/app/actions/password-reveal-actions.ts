@@ -32,7 +32,7 @@ async function relyingParty(): Promise<RelyingParty> {
     const proto = h.get("x-forwarded-proto") ?? (local ? "http" : "https");
     origin = `${proto}://${host}`;
   }
-  return { id: new URL(origin).hostname, origin, name: "CASEVAC Admin" };
+  return { id: new URL(origin).hostname, origin, name: "Jeevan Admin" };
 }
 
 export async function beginPasswordRevealAction(personId: string): Promise<BeginRevealResult> {

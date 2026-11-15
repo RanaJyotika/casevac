@@ -462,17 +462,55 @@ export function EvacuationRows({
 
 /* ------------------------------ Recent records ----------------------------- */
 
+/** A recent-record row: a button when it opens the history, else plain. */
+function RecordRow({
+  row,
+  label,
+  style,
+  onOpen,
+  children,
+}: {
+  row: CasualtySummary;
+  label: string;
+  style: React.ComponentProps<typeof View>['style'];
+  onOpen?: (row: CasualtySummary) => void;
+  children: React.ReactNode;
+}) {
+  if (!onOpen) {
+    return (
+      <View style={style} accessible accessibilityLabel={label}>
+        {children}
+      </View>
+    );
+  }
+  return (
+    <Pressable
+      onPress={() => onOpen(row)}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityHint="Opens this casualty's history"
+      style={({ pressed }) => [style, pressed && styles.recordPressed]}
+    >
+      {children}
+      <Icon name="chevronRight" size={20} color={colors.textSecondary} />
+    </Pressable>
+  );
+}
+
 export function RecentRecordRows({
   rows,
   now,
   emptyText,
   compact = false,
+  onOpen,
 }: {
   rows: CasualtySummary[];
   now: number;
   emptyText: string;
   /** Two-line rows for a narrow column (no table header). */
   compact?: boolean;
+  /** Tapping a row opens the casualty's history. */
+  onOpen?: (row: CasualtySummary) => void;
 }) {
   if (rows.length === 0) {
     return <Text style={styles.empty}>{emptyText}</Text>;
@@ -485,11 +523,12 @@ export function RecentRecordRows({
     return (
       <View>
         {rows.map((r, i) => (
-          <View
+          <RecordRow
             key={r.casualtyId}
+            row={r}
+            label={label(r)}
+            onOpen={onOpen}
             style={[styles.compactRow, i > 0 && styles.rowLine]}
-            accessible
-            accessibilityLabel={label(r)}
           >
             <View style={styles.flex}>
               <Text style={styles.compactTop} numberOfLines={1}>
@@ -506,7 +545,7 @@ export function RecentRecordRows({
             <View style={styles.compactStatus}>
               <StatusPill stage={r.stage} />
             </View>
-          </View>
+          </RecordRow>
         ))}
       </View>
     );
@@ -521,11 +560,12 @@ export function RecentRecordRows({
         <Text style={[styles.th, styles.statusCell]}>Status</Text>
       </View>
       {rows.map(r => (
-        <View
+        <RecordRow
           key={r.casualtyId}
+          row={r}
+          label={label(r)}
+          onOpen={onOpen}
           style={[styles.row, styles.rowLine, styles.recordRow]}
-          accessible
-          accessibilityLabel={label(r)}
         >
           <Text style={[styles.cell, styles.idCell]} numberOfLines={1}>
             {r.casualtyId}
@@ -545,7 +585,7 @@ export function RecentRecordRows({
           <View style={styles.statusCell}>
             <StatusPill stage={r.stage} />
           </View>
-        </View>
+        </RecordRow>
       ))}
     </View>
   );
@@ -893,6 +933,7 @@ const styles = StyleSheet.create({
   compactStatus: { justifyContent: 'center' },
   compactMeta: { ...typography.helper, color: colors.textSecondary },
   recordRow: { minHeight: 46 },
+  recordPressed: { backgroundColor: colors.surface },
   th: { ...typography.helper, fontWeight: '600', color: colors.textSecondary },
   cell: { ...typography.caption, fontWeight: '700', color: colors.textPrimary },
   cellPlain: { ...typography.caption, color: colors.textPrimary },

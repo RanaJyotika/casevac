@@ -10,6 +10,6 @@
  * the wristband QR format "CASEVAC:2:…" (printed wristbands must keep
  * working) and storage keys.
  */
-export const APP_NAME = 'Jeewan';
-/** Upper-case brand for top bars, e.g. "JEEWAN / Home". */
-export const APP_BRAND = 'JEEWAN';
+export const APP_NAME = 'Jeevan';
+/** Upper-case brand for top bars, e.g. "JEEVAN / Home". */
+export const APP_BRAND = 'JEEVAN';

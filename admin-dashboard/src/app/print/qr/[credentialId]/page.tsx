@@ -42,7 +42,7 @@ export default async function PrintQrPage({ params }: PageProps<"/print/qr/[cred
 
       {printable ? (
         <div className="mx-auto flex w-[62mm] flex-col items-center gap-1.5 rounded border border-dashed border-line p-3 print:border-solid print:border-ink">
-          <span className="text-[9pt] font-bold tracking-[0.15em]">CASEVAC</span>
+          <span className="text-[9pt] font-bold tracking-[0.15em]">JEEVAN</span>
           <QrImage payload={credential.payload} label={`QR code for ${person.displayId}`} size={170} />
           <span className="font-mono text-[12pt] font-semibold">{person.displayId}</span>
           <span className="text-[7pt] text-ink-2">QR v{credential.version} · DEMO</span>

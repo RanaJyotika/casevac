@@ -38,7 +38,7 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
         <Panel title="System status">
           <DefinitionGrid
             items={[
-              { label: "Application", value: `CASEVAC Admin Dashboard v${packageJson.version}` },
+              { label: "Application", value: `Jeevan Admin Dashboard v${packageJson.version}` },
               { label: "Environment", value: process.env.NODE_ENV === "production" ? "Production build" : "Development" },
               { label: "Data source", value: <span className="flex flex-wrap items-center gap-2"><Badge tone="warn">DEMO</Badge> {repo.description}</span> },
               { label: "Authentication", value: "Demo administrator session (signed cookie, 8 h)" },

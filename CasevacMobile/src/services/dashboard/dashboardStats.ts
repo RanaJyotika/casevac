@@ -59,6 +59,11 @@ export interface CasualtySummary {
   /** The evacuation behind this row (its assessment), for Continue. */
   assessmentId?: string;
   /**
+   * Every key the casualty is known by on the record (patient UUID, PAT-…,
+   * TEMP-…), so the casualty history can find all their evacuations.
+   */
+  patientKeys?: string[];
+  /**
    * Mechanisms of injury recorded in the assessment ("Other" is stored as
    * its description). Empty / absent when not recorded.
    */

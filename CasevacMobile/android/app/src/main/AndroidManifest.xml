@@ -34,7 +34,7 @@
         android:screenOrientation="fullSensor"
         android:windowSoftInputMode="adjustResize"
         android:exported="true">
-        <!-- Jeewan supports landscape (primary design, 1280 × 800 dp) and portrait
+        <!-- Jeevan supports landscape (primary design, 1280 × 800 dp) and portrait
              (800 × 1280 dp); every screen adapts to the window size
              (UI_DESIGN_GUIDELINES.md §3). No orientation lock is needed, which also
              matches Android 16+, where large-screen orientation locks are ignored. -->

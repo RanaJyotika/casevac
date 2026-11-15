@@ -8,7 +8,7 @@
  *     record is complete and verified, it is saved here and this screen shows
  *     a receipt QR + 6-digit code for the sender to confirm delivery.
  *   Bluetooth — turn on, become visible for 120 s as
- *     "JEEWAN|<medic ID>|<name>", accept the pairing (same number on both
+ *     "JEEVAN|<medic ID>|<name>", accept the pairing (same number on both
  *     tablets), then Accept / Decline the patient offered. The receipt goes
  *     back automatically.
  * The received evacuation is read only; the team continues care with
@@ -195,7 +195,7 @@ export function ReceivePatientScreen({
     if (!envelope) {
       if (!isFrame(text)) {
         setScanError(
-          'That is not a Jeewan patient transfer. Scan the QR on the sending tablet’s Hand over screen.',
+          'That is not a Jeevan patient transfer. Scan the QR on the sending tablet’s Hand over screen.',
         );
       }
       return;
@@ -289,7 +289,7 @@ export function ReceivePatientScreen({
           setBt({
             kind: 'failed',
             message:
-              'Bluetooth permission was not given. Allow “Nearby devices” for Jeewan, or scan the QR.',
+              'Bluetooth permission was not given. Allow “Nearby devices” for Jeevan, or scan the QR.',
           });
           return;
         }

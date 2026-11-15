@@ -2,7 +2,7 @@
  * M01 — Medic Login (CASEVAC_DOCS/SCREEN_SPECIFICATIONS.md)
  *
  * Tablet landscape split layout (UI_DESIGN_GUIDELINES.md §5):
- *   left  — Jeewan branding and short instructions
+ *   left  — Jeevan branding and short instructions
  *   right — bordered login box: User ID, Password, Login, Forgot Password,
  *           and an Emergency Record button below it
  * Falls back to a stacked layout if the window is narrow or portrait.
@@ -55,7 +55,7 @@ import {
 import type { Clinician } from '../types';
 import { APP_NAME } from '../brand';
 
-// The app's name (Jeewan) lives in src/brand.ts.
+// The app's name (Jeevan) lives in src/brand.ts.
 
 const INSTRUCTIONS = [
   'Sign in with the user ID and password issued by your unit registrar.',
@@ -377,7 +377,8 @@ export function LoginScreen({
               </View>
 
               <Text style={styles.demo}>
-                Demo mode · login not verified · MED-DEMO-01 / 1234
+                Demo mode · login not verified · MED-DEMO-01 / 1234 (empty
+                tablet) · MED-DEMO-02 / 1234 (with sample casualties)
               </Text>
             </View>
           </View>

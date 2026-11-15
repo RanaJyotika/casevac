@@ -1,8 +1,8 @@
 /**
  * Bluetooth handover — JS side of android/…/transfer/CasevacBluetoothModule.
  *
- * Receiver: permissions → turn on → rename to "JEEWAN|<medic ID>|<name>"
- *   → visible 120 s → listen. Senders list only "JEEWAN|" names, so other
+ * Receiver: permissions → turn on → rename to "JEEVAN|<medic ID>|<name>"
+ *   → visible 120 s → listen. Senders list only "JEEVAN|" (or older "JEEWAN|") names, so other
  *   phones and radios never appear.
  * Sender: permissions → turn on → search → pick → connect. Android shows its
  *   pairing dialog (same 6-digit number on both tablets) on first contact.
@@ -46,9 +46,16 @@ export function nativeBluetooth(): NativeBluetooth | null {
 }
 
 export const DISCOVERABLE_SECONDS = 120;
-const NAME_PREFIX = 'JEEWAN|';
+const NAME_PREFIX = 'JEEVAN|';
+/**
+ * Prefixes of earlier builds (the app was called "Jeevan"): still found, so
+ * tablets on an older build can receive from / send to this one.
+ */
+const LEGACY_PREFIXES = ['JEEWAN|'];
+const isAppDeviceName = (name: string) =>
+  [NAME_PREFIX, ...LEGACY_PREFIXES].some(p => name.startsWith(p));
 
-/** Name this tablet shows while waiting: "JEEWAN|MED-00045|Maj Meera Iyer". */
+/** Name this tablet shows while waiting: "JEEVAN|MED-00045|Maj Meera Iyer". */
 export function receiverDeviceName(id: string, label: string): string {
   return `${NAME_PREFIX}${id}|${label}`.slice(0, 48);
 }
@@ -64,7 +71,7 @@ export function parseCasevacDevice(
   name: string | null | undefined,
   address: string,
 ): CasevacDevice | null {
-  if (!name || !name.startsWith(NAME_PREFIX)) {
+  if (!name || !isAppDeviceName(name)) {
     return null;
   }
   const [, medicId = '', label = ''] = name.split('|');

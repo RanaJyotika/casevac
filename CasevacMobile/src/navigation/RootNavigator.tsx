@@ -46,6 +46,7 @@ import {
 } from '../screens/AssessmentScreen';
 import { EvacuationCompletedScreen } from '../screens/EvacuationCompletedScreen';
 import { HandoverScreen } from '../screens/HandoverScreen';
+import { CasualtyHistoryScreen } from '../screens/CasualtyHistoryScreen';
 import { HistoryReportScreen } from '../screens/HistoryReportScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { InterventionsScreen } from '../screens/InterventionsScreen';
@@ -105,7 +106,13 @@ type Screen =
     }
   | { name: 'ShareRecord'; assessmentId: string }
   | { name: 'ReceivePatient'; firstCode?: string }
-  | { name: 'HistoryReport'; entry: HistoryEntry };
+  | { name: 'HistoryReport'; entry: HistoryEntry }
+  | {
+      name: 'CasualtyHistory';
+      casualtyId: string;
+      assessmentId?: string;
+      patientKeys?: string[];
+    };
 
 interface PatientTab {
   id: string;
@@ -222,6 +229,7 @@ const STEP_LABEL: Record<Screen['name'], string> = {
   ShareRecord: 'Handing to next team',
   ReceivePatient: 'Receiving from another tablet',
   HistoryReport: 'Viewing history',
+  CasualtyHistory: 'Casualty history',
 };
 
 const SHORT_STAGE: Record<EvacuationStage, string> = {
@@ -546,6 +554,17 @@ export function RootNavigator() {
             }
           />
         );
+      case 'CasualtyHistory':
+        return (
+          <CasualtyHistoryScreen
+            casualtyId={screen.casualtyId}
+            assessmentId={screen.assessmentId}
+            patientKeys={screen.patientKeys}
+            onBack={pop}
+            onOpenReport={entry => push({ name: 'HistoryReport', entry })}
+            onContinue={continueEvacuation}
+          />
+        );
       case 'Assessment':
         return (
           <AssessmentScreen
@@ -679,6 +698,14 @@ export function RootNavigator() {
             onRegisterPatient={link => push({ name: 'RegisterPatient', link })}
             onReceivePatient={() => push({ name: 'ReceivePatient' })}
             onContinueEvacuation={continueEvacuation}
+            onOpenRecord={row =>
+              push({
+                name: 'CasualtyHistory',
+                casualtyId: row.casualtyId,
+                assessmentId: row.assessmentId,
+                patientKeys: row.patientKeys,
+              })
+            }
             onSignOut={() => setNav(signedOut)}
           />
         );

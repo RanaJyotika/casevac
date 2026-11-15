@@ -387,7 +387,7 @@ export function openPackage(
   ) {
     throw new TransferError(
       'NOT_CASEVAC',
-      'This is not a Jeewan patient transfer.',
+      'This is not a Jeevan patient transfer.',
     );
   }
   const [, keyId, data] = parts;
@@ -411,7 +411,7 @@ export function openPackage(
   } catch {
     throw new TransferError(
       'NOT_AUTHENTIC',
-      'This transfer could not be verified — it was damaged or did not come from a Jeewan tablet of this unit.',
+      'This transfer could not be verified — it was damaged or did not come from a Jeevan tablet of this unit.',
     );
   }
   const signature = inner.subarray(0, 64);

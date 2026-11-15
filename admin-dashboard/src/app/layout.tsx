@@ -3,10 +3,10 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "CASEVAC Admin",
-    template: "%s · CASEVAC Admin",
+    default: "Jeevan Admin",
+    template: "%s · Jeevan Admin",
   },
-  description: "CASEVAC Digital Evacuation Program — personnel and QR identity administration (demo).",
+  description: "Jeevan — Digital Casualty Evacuation Program — personnel and QR identity administration (demo).",
   robots: { index: false, follow: false },
 };
 

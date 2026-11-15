@@ -197,7 +197,7 @@ afterEach(() => {
 test('an empty tablet shows an empty Home — no demo casualties', async () => {
   const tree = await openHome();
   const text = allText(tree);
-  expect(text).toContain('JEEWAN');
+  expect(text).toContain('JEEVAN');
   expect(text).not.toContain('CASEVAC');
   expect(text).toContain('Cpl. R. Demo');
   expect(text).toContain('Scan QR Tag');
@@ -342,6 +342,54 @@ test('Continue reopens the evacuation in a tab; Sync explains it is not built ye
     expect.stringContaining('stay saved on this tablet'),
   );
   expect(allText(tree)).toContain('Operational Snapshot');
+});
+
+test('a recent record opens the casualty history, then the full report', async () => {
+  await seedTwo();
+  const tree = await openHome();
+
+  // Only this medic's record is a recent record; it is a button.
+  const rows = tree.root.findAll(
+    n =>
+      typeof n.props.accessibilityLabel === 'string' &&
+      n.props.accessibilityLabel.startsWith('PAT-00042, Test Soldier') &&
+      n.props.accessibilityRole === 'button' &&
+      typeof n.props.onPress === 'function',
+  );
+  expect(rows.length).toBeGreaterThan(0);
+  await ReactTestRenderer.act(async () => {
+    rows[0].props.onPress();
+    await wait(50);
+  });
+
+  const text = allText(tree);
+  expect(text).toContain('CASUALTY HISTORY');
+  // Who: from the provisioned directory, not only the record label.
+  expect(text).toContain('Sepoy');
+  expect(text).toContain('9 Demo Rifles');
+  expect(text).toContain('O+');
+  expect(text).toContain('Gunshot, Burn');
+  // This evacuation: assessment and triage saved, handover still pending.
+  expect(text).toContain('This evacuation');
+  expect(text).toContain('Casualty assessment');
+  expect(text).toContain('Interventions & triage');
+  expect(text).toContain('Handover details');
+  expect(text).toContain('Pending');
+  // Not handed over yet: it can be continued.
+  expect(find(tree, 'Continue evacuation')).toBeDefined();
+  // Every evacuation of this casualty on the tablet.
+  expect(text).toContain('All evacuations (1)');
+  expect(text).toContain('This evacuation');
+
+  await press(tree, 'View full report');
+  expect(allText(tree)).toContain('Historical report — read only');
+  expect(allText(tree)).toContain('Casualty Assessment');
+
+  // Back to the history, then back Home.
+  await press(tree, 'Back to patient');
+  expect(allText(tree)).toContain('CASUALTY HISTORY');
+  await press(tree, 'Back');
+  expect(allText(tree)).toContain('My Recent Records');
 });
 
 test('Log out from the account chip asks for confirmation, then returns to login', async () => {
