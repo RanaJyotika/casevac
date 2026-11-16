@@ -15,15 +15,21 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { APP_BRAND } from '../brand';
 import { useDraftState } from '../services/navigation/drafts';
+import {
+  SAVED_STEP_NOTICE,
+  evacuationToForm,
+  refreshEvacuationHistory,
+  useSavedStep,
+} from '../services/evacuation/editing';
 import {
   AppHeader,
   EvacuationBadge,
@@ -111,6 +117,13 @@ export function PrepareEvacuationScreen({
       };
     },
   );
+  // Saved before (the medic came back to this step): show those answers.
+  const { saved, loading } = useSavedStep(
+    () => evacuations.findByAssessment(assessmentId),
+    draftKey,
+    evacuationToForm,
+    setForm,
+  );
   const [latestTriage, setLatestTriage] = useState<TriageCategory | null>(null);
   const [errors, setErrors] = useState<EvacuationErrors>({});
   const [open, setOpen] = useState<Record<SectionKey, boolean>>({
@@ -166,7 +179,7 @@ export function PrepareEvacuationScreen({
     setOpen(prev => ({ ...prev, [key]: !prev[key] }));
 
   const save = async () => {
-    if (saving) {
+    if (saving || loading) {
       return;
     }
     const result = validateEvacuation(form);
@@ -178,13 +191,18 @@ export function PrepareEvacuationScreen({
     setSaving(true);
     setSaveError(null);
     try {
-      await evacuations.save(result.value, {
-        assessmentId,
-        handoverId,
-        patientKeys: patient.keys,
-        patientLabel: patientLabel(patient),
-        recordedBy,
-      });
+      if (saved) {
+        await evacuations.update(saved.id, result.value);
+        await refreshEvacuationHistory(assessmentId);
+      } else {
+        await evacuations.save(result.value, {
+          assessmentId,
+          handoverId,
+          patientKeys: patient.keys,
+          patientLabel: patientLabel(patient),
+          recordedBy,
+        });
+      }
       clearDraft();
       onSaved();
     } catch {
@@ -211,7 +229,7 @@ export function PrepareEvacuationScreen({
         onBack={onCancel}
         right={<EvacuationBadge kind="IN_TRANSIT" label="In transit" />}
       />
-      <ScrollView
+      <KeyboardAwareScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
@@ -383,6 +401,7 @@ export function PrepareEvacuationScreen({
             } attention before saving.`}
           />
         ) : null}
+        {saved ? <Notice {...SAVED_STEP_NOTICE} /> : null}
         {saveError ? (
           <Notice tone="error" title="NOT SAVED" message={saveError} />
         ) : null}
@@ -400,7 +419,7 @@ export function PrepareEvacuationScreen({
             <SecondaryButton title="Cancel" onPress={onCancel} />
           </View>
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

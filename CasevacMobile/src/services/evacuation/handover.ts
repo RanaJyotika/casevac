@@ -221,7 +221,9 @@ export function officerName(o: ReceivingOfficer): string {
 /** One-line summary for the patient's history list. */
 export function summariseHandover(r: HandoverRecord): string {
   const next =
-    r.nextAction === 'OTHER' ? r.nextActionOther : NEXT_ACTION_LABEL[r.nextAction];
+    r.nextAction === 'OTHER'
+      ? r.nextActionOther
+      : NEXT_ACTION_LABEL[r.nextAction];
   return `Handed over at ${r.place} to ${officerName(r.officer)} · ${next}`;
 }
 
@@ -382,6 +384,26 @@ export class HandoverStore {
         .join(' · '),
       recordedBy: existing?.recordedBy ?? record.recordedBy,
     });
+    return record;
+  }
+
+  /**
+   * Replaces the answers of a saved handover (going back to correct it).
+   * Id, links, author and time recorded stay; the caller refreshes the
+   * history.
+   */
+  async update(
+    id: string,
+    data: Extract<HandoverValidation, { ok: true }>['value'],
+  ): Promise<HandoverRecord> {
+    const all = await this.list();
+    const i = all.findIndex(r => r.id === id);
+    if (i < 0) {
+      throw new Error(`Handover ${id} is not saved on this tablet`);
+    }
+    const record: HandoverRecord = { ...all[i], ...data };
+    all[i] = record;
+    await this.storage.setItem(STORAGE_KEY, JSON.stringify(all));
     return record;
   }
 }

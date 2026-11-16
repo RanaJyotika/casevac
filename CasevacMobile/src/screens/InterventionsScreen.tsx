@@ -15,15 +15,21 @@
 import React, { useState } from 'react';
 import {
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { APP_BRAND } from '../brand';
 import { useDraftState } from '../services/navigation/drafts';
+import {
+  SAVED_STEP_NOTICE,
+  interventionsToForm,
+  refreshEvacuationHistory,
+  useSavedStep,
+} from '../services/evacuation/editing';
 import {
   AppHeader,
   FormField,
@@ -93,9 +99,17 @@ export function InterventionsScreen({
 }: InterventionsScreenProps) {
   const { width } = useWindowDimensions();
   const wide = width >= 900;
+  const interventions = store ?? getInterventionsStore();
   const [form, setForm, clearDraft] = useDraftState<InterventionsForm>(
     draftKey,
     () => emptyInterventions(assessment.status),
+  );
+  // Saved before (the medic came back to this step): show those answers.
+  const { saved, loading } = useSavedStep(
+    () => interventions.findByAssessment(assessment.id),
+    draftKey,
+    interventionsToForm,
+    setForm,
   );
   const [errors, setErrors] = useState<InterventionsErrors>({});
   const [open, setOpen] = useState<Record<SectionKey, boolean>>({
@@ -165,7 +179,7 @@ export function InterventionsScreen({
     setOpen(prev => ({ ...prev, [key]: !prev[key] }));
 
   const save = async () => {
-    if (saving) {
+    if (saving || loading) {
       return;
     }
     const result = validateInterventions(form);
@@ -177,16 +191,23 @@ export function InterventionsScreen({
     setSaving(true);
     setSaveError(null);
     try {
-      const record = await (store ?? getInterventionsStore()).save(
-        result.value,
-        {
+      let record: InterventionsRecord;
+      if (saved) {
+        record = await interventions.update(
+          saved.id,
+          result.value,
+          assessment.status,
+        );
+        await refreshEvacuationHistory(assessment.id);
+      } else {
+        record = await interventions.save(result.value, {
           assessmentId: assessment.id,
           initialStatus: assessment.status,
           patientKeys: patient.keys,
           patientLabel: patientLabel(patient),
           recordedBy,
-        },
-      );
+        });
+      }
       clearDraft();
       onSaved(record);
     } catch {
@@ -221,7 +242,7 @@ export function InterventionsScreen({
         title="Interventions & Triage"
         onBack={onCancel}
       />
-      <ScrollView
+      <KeyboardAwareScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
@@ -486,6 +507,7 @@ export function InterventionsScreen({
             } attention before saving.`}
           />
         ) : null}
+        {saved ? <Notice {...SAVED_STEP_NOTICE} /> : null}
         {saveError ? (
           <Notice tone="error" title="NOT SAVED" message={saveError} />
         ) : null}
@@ -503,7 +525,7 @@ export function InterventionsScreen({
             <SecondaryButton title="Cancel" onPress={onCancel} />
           </View>
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

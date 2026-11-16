@@ -24,13 +24,13 @@ import React, {
 import {
   ActivityIndicator,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { APP_BRAND } from '../brand';
 import {
   AppHeader,
@@ -430,7 +430,10 @@ export function ShareRecordScreen({
         title="Hand Over to Next Team"
         onBack={onBack}
       />
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+      <KeyboardAwareScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+      >
         {summary ? (
           <View style={styles.patient}>
             <Icon name="user" size={26} color={colors.primary} />
@@ -738,7 +741,7 @@ export function ShareRecordScreen({
             </Text>
           </>
         )}
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

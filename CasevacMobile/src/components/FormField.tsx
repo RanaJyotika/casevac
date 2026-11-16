@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import { colors, layout, radius, spacing, typography } from '../theme/tokens';
+import { useRevealFocusedInput } from './KeyboardAwareScrollView';
 
 interface FormFieldProps extends Omit<TextInputProps, 'style' | 'ref'> {
   label: string;
@@ -38,6 +39,7 @@ export function FormField({
   ...inputProps
 }: FormFieldProps) {
   const [focused, setFocused] = useState(false);
+  const revealFocusedInput = useRevealFocusedInput();
   const hasError = Boolean(error);
   const adorned = Boolean(leading || trailing);
 
@@ -66,6 +68,8 @@ export function FormField({
           placeholderTextColor={colors.placeholder}
           onFocus={event => {
             setFocused(true);
+            // Keep this field above the on-screen keyboard (edge-to-edge).
+            revealFocusedInput();
             onFocus?.(event);
           }}
           onBlur={event => {

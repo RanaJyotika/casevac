@@ -203,8 +203,8 @@ test('two patients in two tabs: switch back and forth, unsaved input kept, also 
   expect(allText(tree)).toContain('Interventions & Triage');
 
   // Home → Continue switches to patient 1's open tab, where they were.
-  await press(tree, 'Back');
-  await press(tree, 'Back');
+  // (Back would now walk through the saved assessment; Home goes direct.)
+  await press(tree, 'Home');
   expect(allText(tree)).toContain('Operational Snapshot');
   await act(() => undefined, 100);
   await press(tree, 'Continue PAT-00042');
@@ -243,4 +243,122 @@ test(`at most ${MAX_TABS} patient tabs can be open`, async () => {
     'Too many patients open',
     expect.stringContaining('Close a patient tab'),
   );
+});
+
+test('Log out from the patient side panel asks first, then returns to login', async () => {
+  const tree = await signIn();
+  await type(tree, 'Patient or casualty ID', 'PAT-00042');
+  await press(tree, 'Find patient');
+  await press(tree, 'Start Evacuation');
+  await press(tree, 'Back');
+  await press(tree, 'Back');
+  await press(tree, 'Register casualty');
+  await press(tree, 'Save & Continue');
+  await press(tree, 'Start Evacuation');
+  expect(allText(tree)).toContain('PATIENTS');
+
+  // On a patient screen (no app top bar) the panel's Log out is the only one.
+  const alertSpy = jest.spyOn(Alert, 'alert');
+  await press(tree, 'Log out');
+  expect(alertSpy.mock.calls[0][0]).toBe('Log out?');
+  const buttons = alertSpy.mock.calls[0][2] as {
+    text: string;
+    onPress?: () => void;
+  }[];
+  await act(() => buttons.find(b => b.text === 'Log out')?.onPress?.());
+  expect(allText(tree)).toContain('Medic Login');
+});
+
+test('one patient open: Home and ＋ New patient sit in the top bar of every patient screen', async () => {
+  const tree = await signIn();
+  // Home itself has no such buttons.
+  expect(() => find(tree, 'New patient')).toThrow();
+
+  const startEvacuation = async () => {
+    await type(tree, 'Patient or casualty ID', 'PAT-00042');
+    await press(tree, 'Find patient');
+    await press(tree, 'Start Evacuation');
+    expect(allText(tree)).toContain('Initial Casualty Assessment');
+  };
+  await startEvacuation();
+  // No panel yet, but both buttons are there.
+  expect(allText(tree)).not.toContain('PATIENTS');
+  expect(find(tree, 'Home')).toBeDefined();
+  expect(find(tree, 'New patient')).toBeDefined();
+
+  // ＋ New patient from a patient screen: a second tab opens on "identify
+  // the next casualty", and the side panel takes over from the buttons.
+  await press(tree, 'New patient');
+  const text = allText(tree);
+  expect(text).toContain('PATIENTS');
+  expect(text).toContain('2/6');
+  expect(() => find(tree, 'New patient')).toThrow();
+  expect(() => find(tree, 'Home')).toThrow();
+});
+
+test('one patient open: the top-bar Home button returns Home and keeps the patient open', async () => {
+  const tree = await signIn();
+  await type(tree, 'Patient or casualty ID', 'PAT-00042');
+  await press(tree, 'Find patient');
+  await press(tree, 'Start Evacuation');
+  await press(tree, 'Yes');
+  await press(tree, 'Home');
+  expect(allText(tree)).toContain('Operational Snapshot');
+  // Home has its own top bar: no patient-screen buttons there.
+  expect(() => find(tree, 'New patient')).toThrow();
+  // The patient is still open: starting another one brings up the panel.
+  await press(tree, 'Register casualty');
+  await press(tree, 'Save & Continue');
+  await press(tree, 'Start Evacuation');
+  expect(allText(tree)).toContain('2/6');
+});
+
+test('Back goes to the previous step with its saved answers; saving again corrects that record', async () => {
+  const {
+    getAssessmentStore,
+  } = require('../src/services/evacuation/assessment');
+  let tree = await signIn();
+  await type(tree, 'Patient or casualty ID', 'PAT-00042');
+  await press(tree, 'Find patient');
+  await press(tree, 'Start Evacuation');
+  await press(tree, 'Yes');
+  await type(tree, '1. HR', '130');
+  await press(tree, 'Save & Continue');
+  expect(allText(tree)).toContain('Interventions & Triage');
+
+  // Back: the assessment again (not Home), showing what was saved.
+  await press(tree, 'Back');
+  expect(allText(tree)).toContain('Initial Casualty Assessment');
+  expect(allText(tree)).toContain('SAVED EARLIER');
+  expect(hr(tree)).toBe('130');
+
+  // Correct it: the same record is updated, no second assessment.
+  await type(tree, '1. HR', '125');
+  await press(tree, 'Save & Continue');
+  expect(allText(tree)).toContain('Interventions & Triage');
+  let saved = await getAssessmentStore().list();
+  expect(saved).toHaveLength(1);
+  expect(saved[0].vitals.hr).toBe(125);
+
+  // Reopened from Home → Continue (tab closed): Back still walks back
+  // through the saved steps.
+  await press(tree, 'Home');
+  await act(() => undefined, 600);
+  await ReactTestRenderer.act(async () => tree.unmount());
+  const keys = await AsyncStorage.getAllKeys();
+  await AsyncStorage.multiRemove(
+    keys.filter(k => k.startsWith('casevac.tabs.v1:')),
+  );
+  resetDraftsForTesting();
+  tree = await signIn();
+  await act(() => undefined, 100);
+  await press(tree, 'Continue PAT-00042');
+  expect(allText(tree)).toContain('Interventions & Triage');
+  await press(tree, 'Back');
+  expect(allText(tree)).toContain('Initial Casualty Assessment');
+  expect(hr(tree)).toBe('125');
+  await press(tree, 'Back');
+  expect(allText(tree)).toContain('Operational Snapshot');
+  saved = await getAssessmentStore().list();
+  expect(saved).toHaveLength(1);
 });

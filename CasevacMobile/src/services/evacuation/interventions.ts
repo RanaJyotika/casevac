@@ -473,6 +473,40 @@ export class InterventionsStore {
     }
     return record;
   }
+
+  /**
+   * Replaces the answers of saved interventions (going back to correct
+   * them). Id, links, author and time recorded stay; the caller refreshes
+   * the history.
+   */
+  async update(
+    id: string,
+    data: Extract<InterventionsValidation, { ok: true }>['value'],
+    initialStatus?: TriageCategory | null,
+  ): Promise<InterventionsRecord> {
+    const all = await this.list();
+    const i = all.findIndex(r => r.id === id);
+    if (i < 0) {
+      throw new Error(`Interventions ${id} are not saved on this tablet`);
+    }
+    const old = all[i];
+    const record: InterventionsRecord = {
+      ...old,
+      interventions: data.interventions,
+      triage: {
+        initialStatus:
+          initialStatus === undefined
+            ? old.triage.initialStatus
+            : initialStatus,
+        ...data.triage,
+      },
+      injuryLocations: data.injuryLocations,
+      remarks: data.remarks,
+    };
+    all[i] = record;
+    await this.storage.setItem(STORAGE_KEY, JSON.stringify(all));
+    return record;
+  }
 }
 
 let defaultStore: InterventionsStore | null = null;

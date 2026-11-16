@@ -1,6 +1,15 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { usePatientStrip } from '../navigation/patientStripContext';
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
+import {
+  usePatientHeaderActions,
+  usePatientStrip,
+} from '../navigation/patientStripContext';
 import {
   colors,
   radius,
@@ -8,6 +17,10 @@ import {
   touchTarget,
   typography,
 } from '../theme/tokens';
+import { Icon } from './Icon';
+
+/** Below this width the Home / New patient buttons show icons only. */
+const ICON_ONLY_BELOW = 700;
 
 interface AppHeaderProps {
   /** Small upper-case product label, e.g. "CASEVAC". */
@@ -30,6 +43,9 @@ export function AppHeader({
   onBack,
 }: AppHeaderProps) {
   const strip = usePatientStrip();
+  const actions = usePatientHeaderActions();
+  const { width } = useWindowDimensions();
+  const iconOnly = width < ICON_ONLY_BELOW;
   return (
     <>
       <View style={styles.container}>
@@ -62,6 +78,41 @@ export function AppHeader({
             ) : null}
           </View>
           {right}
+          {actions ? (
+            <View style={styles.actions}>
+              {actions.onNew ? (
+                <Pressable
+                  onPress={actions.onNew}
+                  accessibilityRole="button"
+                  accessibilityLabel="New patient"
+                  accessibilityHint="Start recording the next casualty. This patient stays open."
+                  style={({ pressed }) => [
+                    styles.action,
+                    styles.actionPrimary,
+                    pressed && styles.actionPressed,
+                  ]}
+                >
+                  <Text style={styles.actionPlus}>＋</Text>
+                  {iconOnly ? null : (
+                    <Text style={styles.actionText}>New patient</Text>
+                  )}
+                </Pressable>
+              ) : null}
+              <Pressable
+                onPress={actions.onHome}
+                accessibilityRole="button"
+                accessibilityLabel="Home"
+                accessibilityHint="Go to Home. This patient stays open."
+                style={({ pressed }) => [
+                  styles.action,
+                  pressed && styles.actionPressed,
+                ]}
+              >
+                <Icon name="hospital" size={20} color={colors.primary} />
+                {iconOnly ? null : <Text style={styles.actionText}>Home</Text>}
+              </Pressable>
+            </View>
+          ) : null}
         </View>
         {children ? <View style={styles.subRow}>{children}</View> : null}
       </View>
@@ -122,6 +173,41 @@ const styles = StyleSheet.create({
   title: {
     ...typography.heading,
     color: colors.textPrimary,
+  },
+  actions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  action: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    minHeight: touchTarget,
+    minWidth: touchTarget,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  actionPrimary: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primarySurface,
+  },
+  actionPressed: {
+    opacity: 0.7,
+  },
+  actionText: {
+    ...typography.label,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  actionPlus: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: colors.primary,
   },
   subRow: {
     paddingHorizontal: 20,

@@ -15,7 +15,16 @@ import { getEvacuationStore } from './evacuation';
 import { getHandoverStore } from './handover';
 import { getInterventionsStore } from './interventions';
 
-export type ResumeStep =
+/** The saved steps behind the next one, so Back can walk through them. */
+export interface ResumeTrail {
+  assessmentId: string;
+  /** Status recorded in the assessment (pre-fills triage in 6 + 7). */
+  status: TriageCategory | null;
+  interventionsId: string | null;
+  handoverId: string | null;
+}
+
+export type ResumeStep = { trail: ResumeTrail } & (
   | {
       step: 'Interventions';
       patient: AssessmentPatient;
@@ -37,7 +46,8 @@ export type ResumeStep =
       step: 'EvacuationCompleted';
       patient: AssessmentPatient;
       assessmentId: string;
-    };
+    }
+);
 
 export async function resumeEvacuation(
   assessmentId: string,
@@ -60,11 +70,18 @@ export async function resumeEvacuation(
     rhFactor: who.rhFactor,
     keys: assessment.patientKeys,
   };
+  const trail: ResumeTrail = {
+    assessmentId,
+    status: assessment.incident.status,
+    interventionsId: interventions?.id ?? null,
+    handoverId: handover?.id ?? null,
+  };
   if (evacuation) {
-    return { step: 'EvacuationCompleted', patient, assessmentId };
+    return { trail, step: 'EvacuationCompleted', patient, assessmentId };
   }
   if (handover) {
     return {
+      trail,
       step: 'PrepareEvacuation',
       patient,
       assessmentId,
@@ -73,6 +90,7 @@ export async function resumeEvacuation(
   }
   if (interventions) {
     return {
+      trail,
       step: 'Handover',
       patient,
       assessmentId,
@@ -80,6 +98,7 @@ export async function resumeEvacuation(
     };
   }
   return {
+    trail,
     step: 'Interventions',
     patient,
     assessment: { id: assessmentId, status: assessment.incident.status },

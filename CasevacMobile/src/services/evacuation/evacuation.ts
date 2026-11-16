@@ -279,6 +279,26 @@ export class EvacuationStore {
     });
     return record;
   }
+
+  /**
+   * Replaces the answers of the saved final step (going back to correct
+   * it). Id, links, author and time recorded stay; the caller refreshes the
+   * history.
+   */
+  async update(
+    id: string,
+    data: Extract<EvacuationValidation, { ok: true }>['value'],
+  ): Promise<EvacuationRecord> {
+    const all = await this.list();
+    const i = all.findIndex(r => r.id === id);
+    if (i < 0) {
+      throw new Error(`Evacuation ${id} is not saved on this tablet`);
+    }
+    const record: EvacuationRecord = { ...all[i], ...data };
+    all[i] = record;
+    await this.storage.setItem(STORAGE_KEY, JSON.stringify(all));
+    return record;
+  }
 }
 
 let defaultStore: EvacuationStore | null = null;

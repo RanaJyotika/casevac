@@ -8,14 +8,9 @@
  * Saved locally with a temporary ID (TEMP-…); marked "not verified".
  */
 import React, { useState } from 'react';
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { APP_BRAND } from '../brand';
 import {
   AppHeader,
@@ -136,7 +131,7 @@ export function RegisterPatientScreen({
         title="Register New Patient"
         onBack={onCancel}
       />
-      <ScrollView
+      <KeyboardAwareScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
@@ -261,7 +256,7 @@ export function RegisterPatientScreen({
             <SecondaryButton title="Cancel" onPress={onCancel} />
           </View>
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

@@ -334,8 +334,12 @@ test('Continue reopens the evacuation in a tab; Sync explains it is not built ye
   // tab: PAT-00042 has its assessment and triage saved → Handover Details.
   await press(tree, 'Continue PAT-00042');
   expect(allText(tree)).toContain('Handover Details');
-  // One patient open: no panel; Back returns Home.
+  // Back walks through the saved steps (shown with their answers).
   await press(tree, 'Back');
+  expect(allText(tree)).toContain('Interventions & Triage');
+  expect(allText(tree)).toContain('SAVED EARLIER');
+  // One patient open: no panel; the top bar's Home button returns Home.
+  await press(tree, 'Home');
   await press(tree, 'Unsynced records: Sync now');
   expect(alertSpy).toHaveBeenLastCalledWith(
     'Sync not available yet',
@@ -396,6 +400,21 @@ test('Log out from the account chip asks for confirmation, then returns to login
   const alertSpy = jest.spyOn(Alert, 'alert');
   const tree = await openHome();
   await press(tree, 'Account and log out');
+  const buttons = alertSpy.mock.calls[0][2] as {
+    text: string;
+    onPress?: () => void;
+  }[];
+  await ReactTestRenderer.act(async () => {
+    buttons.find(b => b.text === 'Log out')?.onPress?.();
+  });
+  expect(allText(tree)).toContain('Medic Login');
+});
+
+test('the visible Log out button in the top bar asks first, then returns to login', async () => {
+  const alertSpy = jest.spyOn(Alert, 'alert');
+  const tree = await openHome();
+  await press(tree, 'Log out');
+  expect(alertSpy.mock.calls[0][0]).toBe('Log out?');
   const buttons = alertSpy.mock.calls[0][2] as {
     text: string;
     onPress?: () => void;

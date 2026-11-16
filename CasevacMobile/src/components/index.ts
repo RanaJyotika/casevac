@@ -1,5 +1,5 @@
 export { AppHeader } from './AppHeader';
-export { AppShell, type ShellStatus } from './AppShell';
+export { AppShell, confirmLogOut, type ShellStatus } from './AppShell';
 export { CompanyBars, InjuryBars, TRIAGE_SHORT, TriageDonut } from './dashboard';
 export {
   AlertCards,

@@ -500,6 +500,26 @@ export class AssessmentStore {
     });
     return record;
   }
+
+  /**
+   * Replaces the answers of a saved assessment (going back to correct it).
+   * The id, patient, author and time recorded stay, so later steps that
+   * point at this assessment still do. The caller refreshes the history.
+   */
+  async update(
+    id: string,
+    data: Extract<AssessmentValidation, { ok: true }>['value'],
+  ): Promise<InitialAssessment> {
+    const all = await this.list();
+    const i = all.findIndex(a => a.id === id);
+    if (i < 0) {
+      throw new Error(`Assessment ${id} is not saved on this tablet`);
+    }
+    const record: InitialAssessment = { ...all[i], ...data };
+    all[i] = record;
+    await this.storage.setItem(STORAGE_KEY, JSON.stringify(all));
+    return record;
+  }
 }
 
 let defaultStore: AssessmentStore | null = null;

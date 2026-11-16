@@ -14,15 +14,21 @@
 import React, { useState } from 'react';
 import {
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { APP_BRAND } from '../brand';
 import { useDraftState } from '../services/navigation/drafts';
+import {
+  SAVED_STEP_NOTICE,
+  assessmentToForm,
+  refreshEvacuationHistory,
+  useSavedStep,
+} from '../services/evacuation/editing';
 import {
   AppHeader,
   FormField,
@@ -80,6 +86,11 @@ interface AssessmentScreenProps {
   store?: AssessmentStore;
   /** Keeps unsaved input across tab switches and restarts (patient tabs). */
   draftKey?: string;
+  /**
+   * Set when this assessment was already saved (the medic went back to it):
+   * the form shows the saved answers and Save updates that record.
+   */
+  assessmentId?: string;
 }
 
 type SectionKey = 'A' | 'B' | 'C' | 'D';
@@ -158,12 +169,20 @@ export function AssessmentScreen({
   onSaved,
   store,
   draftKey,
+  assessmentId,
 }: AssessmentScreenProps) {
   const { width } = useWindowDimensions();
   const wide = width >= 900;
+  const assessments = store ?? getAssessmentStore();
   const [form, setForm, clearDraft] = useDraftState<AssessmentForm>(
     draftKey,
     EMPTY_ASSESSMENT,
+  );
+  const { saved, loading } = useSavedStep(
+    async () => (assessmentId ? assessments.get(assessmentId) : null),
+    draftKey,
+    assessmentToForm,
+    setForm,
   );
   const [errors, setErrors] = useState<AssessmentErrors>({});
   const [open, setOpen] = useState<Record<SectionKey, boolean>>({
@@ -204,7 +223,7 @@ export function AssessmentScreen({
     setOpen(prev => ({ ...prev, [key]: !prev[key] }));
 
   const save = async () => {
-    if (saving) {
+    if (saving || loading) {
       return;
     }
     const result = validateAssessment(form);
@@ -217,11 +236,17 @@ export function AssessmentScreen({
     setSaving(true);
     setSaveError(null);
     try {
-      const record = await (store ?? getAssessmentStore()).save(result.value, {
-        patientKeys: patient.keys,
-        patientLabel: patientLabel(patient),
-        recordedBy,
-      });
+      let record: InitialAssessment;
+      if (saved) {
+        record = await assessments.update(saved.id, result.value);
+        await refreshEvacuationHistory(saved.id);
+      } else {
+        record = await assessments.save(result.value, {
+          patientKeys: patient.keys,
+          patientLabel: patientLabel(patient),
+          recordedBy,
+        });
+      }
       clearDraft();
       onSaved(record);
     } catch {
@@ -248,7 +273,7 @@ export function AssessmentScreen({
         title="Initial Casualty Assessment"
         onBack={onCancel}
       />
-      <ScrollView
+      <KeyboardAwareScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
@@ -662,6 +687,7 @@ export function AssessmentScreen({
                 } attention before saving.`}
               />
             ) : null}
+            {saved ? <Notice {...SAVED_STEP_NOTICE} /> : null}
             {saveError ? (
               <Notice tone="error" title="NOT SAVED" message={saveError} />
             ) : null}
@@ -681,7 +707,7 @@ export function AssessmentScreen({
             </View>
           </>
         ) : null}
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

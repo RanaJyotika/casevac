@@ -42,6 +42,8 @@ interface Props {
   onSelect: (id: string) => void;
   onClose: (id: string) => void;
   onNew: () => void;
+  /** Asks to confirm, then signs the medic out. */
+  onLogOut: () => void;
 }
 
 const NAVY = '#0F1E3D';
@@ -50,6 +52,9 @@ const NAVY_LINE = '#24345A';
 const ON_NAVY = '#FFFFFF';
 const ON_NAVY_MUTED = 'rgba(255,255,255,0.72)';
 const UNTRIAGED = '#64748B';
+/** Light red that stays readable on navy (log out). */
+const LOGOUT_TEXT = '#FFB4B4';
+const LOGOUT_LINE = 'rgba(255,180,180,0.55)';
 
 const stripeColor = (t: TriageCategory | null) =>
   t ? triage[t].fill : UNTRIAGED;
@@ -94,6 +99,7 @@ export function PatientPanel({
   onSelect,
   onClose,
   onNew,
+  onLogOut,
   collapsed,
   onToggleCollapsed,
 }: Props & { collapsed: boolean; onToggleCollapsed: () => void }) {
@@ -291,6 +297,19 @@ export function PatientPanel({
           {collapsed ? '＋' : '＋  New patient'}
         </Text>
       </Pressable>
+
+      <Pressable
+        onPress={onLogOut}
+        accessibilityRole="button"
+        accessibilityLabel="Log out"
+        style={({ pressed }) => [
+          collapsed ? styles.logoutRound : styles.logout,
+          pressed && styles.pressed,
+        ]}
+      >
+        <Icon name="logOut" size={20} color={LOGOUT_TEXT} />
+        {collapsed ? null : <Text style={styles.logoutText}>Log out</Text>}
+      </Pressable>
     </SafeAreaView>
   );
 }
@@ -304,6 +323,7 @@ export function PatientStrip({
   onSelect,
   onClose,
   onNew,
+  onLogOut,
 }: Props) {
   const homeActive = activeId === 'home';
   return (
@@ -393,6 +413,22 @@ export function PatientStrip({
         >
           <Text style={styles.addText}>＋</Text>
         </Pressable>
+        {/* Home's top bar already has Log out; patient screens get it here. */}
+        {homeActive ? null : (
+          <Pressable
+            onPress={onLogOut}
+            accessibilityRole="button"
+            accessibilityLabel="Log out"
+            style={({ pressed }) => [
+              styles.chip,
+              styles.chipLogout,
+              pressed && styles.pressed,
+            ]}
+          >
+            <Icon name="logOut" size={18} color={LOGOUT_TEXT} />
+            <Text style={styles.logoutText}>Log out</Text>
+          </Pressable>
+        )}
       </ScrollView>
     </View>
   );
@@ -512,6 +548,30 @@ const styles = StyleSheet.create({
     borderColor: ON_NAVY,
   },
   addText: { fontSize: 17, fontWeight: '800', color: ON_NAVY },
+  logout: {
+    minHeight: 48,
+    marginHorizontal: spacing.sm,
+    marginBottom: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: LOGOUT_LINE,
+  },
+  logoutRound: {
+    width: 52,
+    height: 52,
+    marginHorizontal: spacing.sm + 4,
+    marginBottom: spacing.sm + 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 26,
+    borderWidth: 1,
+    borderColor: LOGOUT_LINE,
+  },
+  logoutText: { fontSize: 15, fontWeight: '700', color: LOGOUT_TEXT },
 
   /* Collapsed rail */
   railItem: {
@@ -558,6 +618,12 @@ const styles = StyleSheet.create({
   },
   chipHome: { width: 52, justifyContent: 'center' },
   chipAdd: { width: 52, justifyContent: 'center' },
+  chipLogout: {
+    gap: 6,
+    paddingHorizontal: spacing.md,
+    borderWidth: 1,
+    borderColor: LOGOUT_LINE,
+  },
   chipMain: {
     maxWidth: 240,
     minHeight: 44,

@@ -135,7 +135,9 @@ async function openHome(): Promise<Renderer> {
 beforeEach(async () => {
   // Start each test without patient tabs saved by an earlier test.
   const keys = await AsyncStorage.getAllKeys();
-  await AsyncStorage.multiRemove(keys.filter(k => k.startsWith('casevac.tabs.')));
+  await AsyncStorage.multiRemove(
+    keys.filter(k => k.startsWith('casevac.tabs.')),
+  );
 });
 
 afterEach(() => {
@@ -338,6 +340,16 @@ test('assessment (4+5) → Save & Continue → interventions & triage (6+7) → 
 
   // 6 + 7 saved → Handover (8). Leaving it keeps the evacuation open.
   expect(allText(tree)).toContain('Handover Details');
+  // Back walks through the saved steps, showing what was saved.
+  await press(tree, 'Back');
+  expect(allText(tree)).toContain('Interventions & Triage');
+  expect(allText(tree)).toContain('SAVED EARLIER');
+  expect(find(tree, 'Provisional diagnosis').props.value).toBe(
+    'GSW left thigh',
+  );
+  await press(tree, 'Back');
+  expect(allText(tree)).toContain('Initial Casualty Assessment');
+  expect(allText(tree)).toContain('SAVED EARLIER');
   await press(tree, 'Back');
 
   // Back on Patient Identification: ONE history entry for the evacuation.
@@ -408,7 +420,9 @@ test('handover (8) → prepare evacuation (9): search the officer, save both —
   await press(tree, 'Save & Continue');
   let text = allText(tree);
   expect(text).toContain('Select the place of initiation.');
-  expect(text).toContain('Search and select the officer receiving the casualty.');
+  expect(text).toContain(
+    'Search and select the officer receiving the casualty.',
+  );
   expect(text).toContain('Select the next course of action.');
 
   await press(tree, '2. ADS, Advanced Dressing Station');
@@ -551,11 +565,19 @@ test('handover: search by personnel ID, enter an officer by hand, and "Other" ne
   expect(allText(tree)).toContain('Prepare Evacuation');
 
   // Leaving before Prepare Evacuation: the casualty stays "In transit".
+  // Back walks through handover, interventions and assessment first.
+  await press(tree, 'Back');
+  expect(allText(tree)).toContain('Handover Details');
+  expect(find(tree, 'Officer name').props.value).toBe('Anil Rao');
+  await press(tree, 'Back');
+  await press(tree, 'Back');
   await press(tree, 'Back');
   text = allText(tree);
   expect(text).toContain('Evacuation — in transit');
   expect(text).toContain('In transit · not handed over');
-  expect(text).toContain('Handed over at FSC to Capt Anil Rao · Hold for airlift');
+  expect(text).toContain(
+    'Handed over at FSC to Capt Anil Rao · Hold for airlift',
+  );
 
   await openHistory(tree, 'Hold for airlift');
   text = allText(tree);

@@ -34,12 +34,16 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { confirmLogOut } from '../components/AppShell';
 import {
   PatientPanel,
   PatientStrip,
   type PatientTabView,
 } from '../components/PatientTabBar';
-import { PatientStripProvider } from './patientStripContext';
+import {
+  PatientHeaderActionsProvider,
+  PatientStripProvider,
+} from './patientStripContext';
 import {
   AssessmentScreen,
   type AssessmentPatient,
@@ -61,7 +65,10 @@ import { ReceivePatientScreen } from '../screens/ReceivePatientScreen';
 import { RegisterPatientScreen } from '../screens/RegisterPatientScreen';
 import { ScanPatientScreen } from '../screens/ScanPatientScreen';
 import { ShareRecordScreen } from '../screens/ShareRecordScreen';
-import { resumeEvacuation } from '../services/evacuation/resume';
+import {
+  resumeEvacuation,
+  type ResumeStep,
+} from '../services/evacuation/resume';
 import {
   STAGE_TEXT,
   loadTabInfo,
@@ -81,7 +88,12 @@ type Screen =
   | { name: 'ScanPatient' }
   | { name: 'PatientIdentification'; result: Identification }
   | { name: 'RegisterPatient'; link: FieldLink }
-  | { name: 'Assessment'; patient: AssessmentPatient }
+  | {
+      name: 'Assessment';
+      patient: AssessmentPatient;
+      /** Set once saved: going back shows (and updates) that record. */
+      assessmentId?: string;
+    }
   | {
       name: 'Interventions';
       patient: AssessmentPatient;
@@ -188,6 +200,8 @@ function describeTab(tab: PatientTab): {
     if (!assessmentId) {
       if (s.name === 'Interventions') {
         assessmentId = s.assessment.id;
+      } else if (s.name === 'Assessment' && s.assessmentId) {
+        assessmentId = s.assessmentId;
       } else if (
         s.name === 'Handover' ||
         s.name === 'PrepareEvacuation' ||
@@ -242,7 +256,10 @@ const SHORT_STAGE: Record<EvacuationStage, string> = {
 function draftKeyFor(tabId: string, s: Screen): string | undefined {
   switch (s.name) {
     case 'Assessment':
-      return `${tabId}:Assessment`;
+      // A saved assessment opened again gets its own draft.
+      return s.assessmentId
+        ? `${tabId}:Assessment:${s.assessmentId}`
+        : `${tabId}:Assessment`;
     case 'Interventions':
       return `${tabId}:Interventions:${s.assessment.id}`;
     case 'Handover':
@@ -252,6 +269,47 @@ function draftKeyFor(tabId: string, s: Screen): string | undefined {
     default:
       return undefined;
   }
+}
+
+/**
+ * The stack for reopening an evacuation (Home → Continue): every step
+ * already saved, then the next one on top — so Back goes to the previous
+ * step (showing what was saved) instead of straight Home.
+ */
+function evacuationStack(r: ResumeStep): Screen[] {
+  const { patient, trail } = r;
+  const { assessmentId } = trail;
+  const stack: Screen[] = [
+    { name: 'Assessment', patient, assessmentId },
+    {
+      name: 'Interventions',
+      patient,
+      assessment: { id: assessmentId, status: trail.status },
+    },
+  ];
+  if (r.step === 'Interventions') {
+    return stack;
+  }
+  stack.push({
+    name: 'Handover',
+    patient,
+    assessmentId,
+    interventionsId: trail.interventionsId,
+  });
+  if (r.step === 'Handover') {
+    return stack;
+  }
+  stack.push({
+    name: 'PrepareEvacuation',
+    patient,
+    assessmentId,
+    handoverId: trail.handoverId,
+  });
+  if (r.step === 'PrepareEvacuation') {
+    return stack;
+  }
+  stack.push({ name: 'EvacuationCompleted', patient, assessmentId });
+  return stack;
 }
 
 /* ------------------------------ Navigator ------------------------------ */
@@ -288,6 +346,15 @@ export function RootNavigator() {
   const replace = useCallback(
     (screen: Screen) =>
       setNav(s => withStack(s, [...activeStack(s).slice(0, -1), screen])),
+    [],
+  );
+  /**
+   * After a step is saved: keep it in the stack (marked saved, so Back
+   * shows and can correct it) and open the next step on top.
+   */
+  const advance = useCallback(
+    (saved: Screen, next: Screen) =>
+      setNav(s => withStack(s, [...activeStack(s).slice(0, -1), saved, next])),
     [],
   );
   const goHome = useCallback(() => setNav(s => ({ ...s, active: 'home' })), []);
@@ -364,8 +431,8 @@ export function RootNavigator() {
         );
         return;
       }
-      const { step, ...rest } = next;
-      openTab([{ name: step, ...rest } as Screen]);
+      // The saved steps go underneath, so Back walks through them.
+      openTab(evacuationStack(next));
     },
     [nav.tabs, openTab],
   );
@@ -572,13 +639,20 @@ export function RootNavigator() {
             recordedBy={clinician.id}
             draftKey={draftKey}
             onCancel={pop}
+            assessmentId={screen.assessmentId}
             onSaved={record =>
               // Assessment (4 + 5) → Interventions & Triage (6 + 7).
-              replace({
-                name: 'Interventions',
-                patient: screen.patient,
-                assessment: { id: record.id, status: record.incident.status },
-              })
+              advance(
+                { ...screen, assessmentId: record.id },
+                {
+                  name: 'Interventions',
+                  patient: screen.patient,
+                  assessment: {
+                    id: record.id,
+                    status: record.incident.status,
+                  },
+                },
+              )
             }
           />
         );
@@ -592,7 +666,7 @@ export function RootNavigator() {
             onCancel={pop}
             onSaved={record =>
               // 6 + 7 → Handover (8).
-              replace({
+              advance(screen, {
                 name: 'Handover',
                 patient: screen.patient,
                 assessmentId: screen.assessment.id,
@@ -612,7 +686,7 @@ export function RootNavigator() {
             onCancel={pop}
             onSaved={record =>
               // 8 → Prepare Evacuation (9); the casualty is "In transit".
-              replace({
+              advance(screen, {
                 name: 'PrepareEvacuation',
                 patient: screen.patient,
                 assessmentId: screen.assessmentId,
@@ -632,7 +706,7 @@ export function RootNavigator() {
             onCancel={pop}
             onSaved={() =>
               // Final save → Evacuation Completed (10).
-              replace({
+              advance(screen, {
                 name: 'EvacuationCompleted',
                 patient: screen.patient,
                 assessmentId: screen.assessmentId,
@@ -720,6 +794,7 @@ export function RootNavigator() {
     onSelect: (id: string) => setNav(s => ({ ...s, active: id })),
     onClose: confirmClose,
     onNew: () => openTab([{ name: 'NewPatient' }]),
+    onLogOut: () => confirmLogOut(() => setNav(signedOut)),
   };
   /* Keyed per tab and depth: switching tabs remounts the screen, which
      restores that tab's draft instead of reusing another tab's state. */
@@ -735,7 +810,36 @@ export function RootNavigator() {
   // The patient list appears only when there is something to switch between:
   // with 0 or 1 open patient, Back returns Home and Home → Continue reopens.
   if (nav.tabs.length < MIN_TABS_FOR_LIST) {
-    return screenView;
+    if (!activeTab) {
+      return screenView;
+    }
+    // One patient open: Home and ＋ New patient sit in every patient
+    // screen's top bar, so the medic can start the next casualty or go
+    // Home at any point. A second patient brings up the panel / strip.
+    const headerActions = {
+      onHome: () =>
+        setNav(s => {
+          const t = s.tabs.find(x => x.id === s.active);
+          // Nothing recorded in an empty ＋ tab yet: close it on the way.
+          const empty =
+            t && t.stack.length === 1 && t.stack[0].name === 'NewPatient';
+          return {
+            ...s,
+            tabs: empty ? s.tabs.filter(x => x.id !== t.id) : s.tabs,
+            active: 'home',
+          };
+        }),
+      // Already on "identify the next casualty": ＋ would just repeat it.
+      onNew:
+        screen.name === 'NewPatient'
+          ? undefined
+          : () => openTab([{ name: 'NewPatient' }]),
+    };
+    return (
+      <PatientHeaderActionsProvider value={headerActions}>
+        {screenView}
+      </PatientHeaderActionsProvider>
+    );
   }
   // Landscape: navy side panel. Portrait: navy strip under the top bar.
   return wide ? (

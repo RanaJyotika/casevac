@@ -26,7 +26,8 @@ export type IconName =
   | 'ambulance'
   | 'calendar'
   | 'chevronDown'
-  | 'lock';
+  | 'lock'
+  | 'logOut';
 
 const PATHS: Record<IconName, React.ReactNode> = {
   scan: (
@@ -121,6 +122,9 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <Rect x={3} y={3} width={18} height={18} rx={2} />
       <Path d="M9 7v10M15 7v10M9 12h6" />
     </>
+  ),
+  logOut: (
+    <Path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
   ),
 };
 

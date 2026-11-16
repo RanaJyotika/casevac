@@ -16,15 +16,21 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   Image,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from '../components/KeyboardAwareScrollView';
 import { APP_BRAND } from '../brand';
 import { useDraftState } from '../services/navigation/drafts';
+import {
+  SAVED_STEP_NOTICE,
+  handoverToForm,
+  refreshEvacuationHistory,
+  useSavedStep,
+} from '../services/evacuation/editing';
 import {
   AppHeader,
   FormField,
@@ -244,6 +250,13 @@ export function HandoverScreen({
       };
     },
   );
+  // Saved before (the medic came back to this step): show those answers.
+  const { saved, loading } = useSavedStep(
+    () => handovers.findByAssessment(assessmentId),
+    draftKey,
+    handoverToForm,
+    setForm,
+  );
   const [placeHint, setPlaceHint] = useState(false);
   const [errors, setErrors] = useState<HandoverErrors>({});
   const [open, setOpen] = useState<Record<SectionKey, boolean>>({
@@ -313,7 +326,7 @@ export function HandoverScreen({
     setOpen(prev => ({ ...prev, [key]: !prev[key] }));
 
   const save = async () => {
-    if (saving) {
+    if (saving || loading) {
       return;
     }
     const result = validateHandover(form);
@@ -325,13 +338,19 @@ export function HandoverScreen({
     setSaving(true);
     setSaveError(null);
     try {
-      const record = await handovers.save(result.value, {
-        assessmentId,
-        interventionsId,
-        patientKeys: patient.keys,
-        patientLabel: patientLabel(patient),
-        recordedBy,
-      });
+      let record: HandoverRecord;
+      if (saved) {
+        record = await handovers.update(saved.id, result.value);
+        await refreshEvacuationHistory(assessmentId);
+      } else {
+        record = await handovers.save(result.value, {
+          assessmentId,
+          interventionsId,
+          patientKeys: patient.keys,
+          patientLabel: patientLabel(patient),
+          recordedBy,
+        });
+      }
       clearDraft();
       onSaved(record);
     } catch {
@@ -353,7 +372,7 @@ export function HandoverScreen({
         title="Handover Details"
         onBack={onCancel}
       />
-      <ScrollView
+      <KeyboardAwareScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
@@ -429,7 +448,7 @@ export function HandoverScreen({
               );
             })}
           </View>
-          {placeHint && form.place ? (
+          {placeHint && form.place && !saved ? (
             <Text style={styles.hint}>
               Pre-selected: last place used on this tablet. Change it if needed.
             </Text>
@@ -652,6 +671,7 @@ export function HandoverScreen({
             } attention before saving.`}
           />
         ) : null}
+        {saved ? <Notice {...SAVED_STEP_NOTICE} /> : null}
         {saveError ? (
           <Notice tone="error" title="NOT SAVED" message={saveError} />
         ) : null}
@@ -669,7 +689,7 @@ export function HandoverScreen({
             <SecondaryButton title="Cancel" onPress={onCancel} />
           </View>
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

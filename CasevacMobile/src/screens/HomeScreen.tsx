@@ -25,6 +25,7 @@ import {
   AppShell,
   Card,
   CompanyBars,
+  confirmLogOut,
   EvacuationRows,
   IdSearch,
   InjuryBars,
@@ -144,16 +145,7 @@ export function HomeScreen({
     [data, now],
   );
 
-  const openAccount = () => {
-    Alert.alert(
-      'Log out?',
-      'Records saved on this tablet remain available after you sign in again.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Log out', style: 'destructive', onPress: onSignOut },
-      ],
-    );
-  };
+  const openAccount = () => confirmLogOut(onSignOut);
 
   const onAlertAction = (alert: HomeAlert) => {
     if (alert.id === 'unsynced') {

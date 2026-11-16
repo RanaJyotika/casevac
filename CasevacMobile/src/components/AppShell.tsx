@@ -3,11 +3,12 @@
  *
  * One compact top bar, no side navigation:
  *   CASEVAC / <page>   ·   connectivity + queued records · last sync · clock · medic
- * The medic chip is a button: it opens the account menu (Log out).
- * Panels run edge to edge; safe-area insets pad their content.
+ * The medic chip and the "Log out" button next to it both ask to confirm,
+ * then sign out. Panels run edge to edge; safe-area insets pad their content.
  */
 import React, { useEffect, useState } from 'react';
 import {
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -38,6 +39,18 @@ interface AppShellProps {
   /** Opens the account menu (log out). */
   onAccount: () => void;
   children: React.ReactNode;
+}
+
+/** Asks to confirm, then signs out. Shared by the top bar and side panel. */
+export function confirmLogOut(onSignOut: () => void): void {
+  Alert.alert(
+    'Log out?',
+    'Records saved on this tablet remain available after you sign in again.',
+    [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Log out', style: 'destructive', onPress: onSignOut },
+    ],
+  );
 }
 
 /** Below this window width the top bar drops secondary text. */
@@ -183,6 +196,20 @@ export function AppShell({
               {role}
             </Text>
           </View>
+        </Pressable>
+
+        <Pressable
+          onPress={onAccount}
+          accessibilityRole="button"
+          accessibilityLabel="Log out"
+          hitSlop={4}
+          style={({ pressed }) => [
+            styles.logout,
+            pressed && styles.logoutPressed,
+          ]}
+        >
+          <Icon name="logOut" size={18} color={colors.error} />
+          {compact ? null : <Text style={styles.logoutText}>Log out</Text>}
         </Pressable>
       </View>
 
@@ -333,6 +360,27 @@ const styles = StyleSheet.create({
   roleEmergency: {
     color: colors.error,
     fontWeight: '700',
+  },
+  logout: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    minHeight: 44,
+    minWidth: 44,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: layout.borderWidth,
+    borderColor: colors.errorBorder,
+    backgroundColor: colors.errorSurface,
+  },
+  logoutPressed: {
+    opacity: 0.7,
+  },
+  logoutText: {
+    ...typography.caption,
+    fontWeight: '700',
+    color: colors.error,
   },
   content: {
     flex: 1,
