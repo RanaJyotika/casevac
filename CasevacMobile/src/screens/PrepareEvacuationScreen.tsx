@@ -2,13 +2,16 @@
  * M13B — Prepare Evacuation (client screen 9). The final step.
  *
  * Opens after Save & Continue on Handover Details (8). Sections:
- *   A Date & time of evacuation — pickers, filled with now
- *   B Assisted by medical officer (MO)? — Yes / No
- *   C Assisted by nursing assistant (NA)? — Yes / No
- *   D Patient condition during evacuation — triage colour, pre-filled with
+ *   A Evacuation procedure — the next action for this casualty: Continue at
+ *     RAP · Evacuate to ADS · Evacuate to FSC · Evacuate to MH / CH / BH,
+ *     with the "Selected action" (e.g. Prepare transfer to ADS)
+ *   B Date & time of evacuation (of the decision, when continuing at RAP)
+ *   C Assisted by medical officer (MO)? — Yes / No
+ *   D Assisted by nursing assistant (NA)? — Yes / No
+ *   E Patient condition during evacuation — triage colour, pre-filled with
  *     the latest triage recorded for this evacuation; optional notes
- *   E Mode of evacuation — Ambulance (ground) · Helicopter (air) ·
- *     Stretcher (manual / on-site), one choice
+ *   F Mode of evacuation — Ambulance (ground) · Helicopter (air) ·
+ *     Stretcher (manual / on-site), one choice; hidden when continuing at RAP
  * Save completes the evacuation record: it shows "Handed over" and is read
  * only from then on.
  */
@@ -55,6 +58,9 @@ import {
 } from '../services/evacuation/assessment';
 import {
   MODES,
+  PROCEDURES,
+  PROCEDURE_ACTION,
+  staysAtRap,
   getEvacuationStore,
   validateEvacuation,
   type EvacuationErrors,
@@ -84,7 +90,15 @@ interface PrepareEvacuationScreenProps {
   assessmentStore?: AssessmentStore;
 }
 
-type SectionKey = 'A' | 'B' | 'C' | 'D' | 'E';
+type SectionKey = 'A' | 'B' | 'C' | 'D' | 'E' | 'F';
+const ALL_OPEN: Record<SectionKey, boolean> = {
+  A: true,
+  B: true,
+  C: true,
+  D: true,
+  E: true,
+  F: true,
+};
 
 export function PrepareEvacuationScreen({
   patient,
@@ -107,6 +121,7 @@ export function PrepareEvacuationScreen({
     () => {
       const now = new Date();
       return {
+        procedure: null,
         date: toDateValue(now),
         time: toTimeValue(now),
         assistedByMo: null,
@@ -126,13 +141,7 @@ export function PrepareEvacuationScreen({
   );
   const [latestTriage, setLatestTriage] = useState<TriageCategory | null>(null);
   const [errors, setErrors] = useState<EvacuationErrors>({});
-  const [open, setOpen] = useState<Record<SectionKey, boolean>>({
-    A: true,
-    B: true,
-    C: true,
-    D: true,
-    E: true,
-  });
+  const [open, setOpen] = useState<Record<SectionKey, boolean>>(ALL_OPEN);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -185,7 +194,7 @@ export function PrepareEvacuationScreen({
     const result = validateEvacuation(form);
     if (!result.ok) {
       setErrors(result.errors);
-      setOpen({ A: true, B: true, C: true, D: true, E: true });
+      setOpen(ALL_OPEN);
       return;
     }
     setSaving(true);
@@ -216,6 +225,8 @@ export function PrepareEvacuationScreen({
 
   const errorCount = Object.values(errors).filter(Boolean).length;
   const half = wide ? styles.half : undefined;
+  const atRap = staysAtRap(form.procedure);
+  const when = atRap ? 'decision' : 'evacuation';
   const changed =
     latestTriage !== null &&
     form.condition !== null &&
@@ -248,17 +259,74 @@ export function PrepareEvacuationScreen({
           <StatusBadge label="Handover details saved" tone="success" />
         </View>
 
-        {/* A — Date and time of evacuation */}
+        {/* A — Evacuation procedure: the next action for this casualty */}
         <FormSection
           letter="A"
-          title="Date & Time of Evacuation"
+          title="Evacuation Procedure"
           open={open.A}
           onToggle={() => toggleSection('A')}
+        >
+          <Text style={styles.hint}>
+            Select the next action for this casualty.
+          </Text>
+          <View
+            accessibilityRole="radiogroup"
+            accessibilityLabel="Evacuation procedure"
+          >
+            {PROCEDURES.map(p => {
+              const selected = form.procedure === p.value;
+              return (
+                <Pressable
+                  key={p.value}
+                  onPress={() => set('procedure', p.value)}
+                  accessibilityRole="radio"
+                  accessibilityLabel={`${p.label} (${p.meaning})`}
+                  accessibilityState={{ selected, checked: selected }}
+                  style={({ pressed }) => [
+                    styles.mode,
+                    selected && styles.modeOn,
+                    pressed && !selected && styles.pressed,
+                  ]}
+                >
+                  <View style={[styles.box, selected && styles.boxOn]}>
+                    {selected ? (
+                      <Icon name="check" size={18} color={colors.onPrimary} />
+                    ) : null}
+                  </View>
+                  <View style={styles.flex}>
+                    <Text style={styles.modeLabel}>{p.label}</Text>
+                    <Text style={styles.modeMeaning}>{p.meaning}</Text>
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
+          {form.procedure ? (
+            <View style={styles.selected} accessibilityLiveRegion="polite">
+              <Text style={styles.selectedLabel}>Selected action</Text>
+              <Text style={styles.selectedValue}>
+                {PROCEDURE_ACTION[form.procedure]}
+              </Text>
+            </View>
+          ) : null}
+          {errors.procedure ? (
+            <Text style={styles.error}>{errors.procedure}</Text>
+          ) : null}
+        </FormSection>
+
+        {/* B — Date and time of evacuation (or of the decision to stay) */}
+        <FormSection
+          letter="B"
+          title={
+            atRap ? 'Date & Time of Decision' : 'Date & Time of Evacuation'
+          }
+          open={open.B}
+          onToggle={() => toggleSection('B')}
         >
           <View style={styles.grid}>
             <View style={half}>
               <DateField
-                label="Date of evacuation"
+                label={`Date of ${when}`}
                 value={form.date}
                 onChange={v => set('date', v)}
                 maximumDate={new Date()}
@@ -267,7 +335,7 @@ export function PrepareEvacuationScreen({
             </View>
             <View style={half}>
               <TimeField
-                label="Time of evacuation"
+                label={`Time of ${when}`}
                 value={form.time}
                 onChange={v => set('time', v)}
                 error={errors.time}
@@ -276,12 +344,12 @@ export function PrepareEvacuationScreen({
           </View>
         </FormSection>
 
-        {/* B — Assisted by MO */}
+        {/* C — Assisted by MO */}
         <FormSection
-          letter="B"
+          letter="C"
           title="Assisted by Medical Officer (MO)"
-          open={open.B}
-          onToggle={() => toggleSection('B')}
+          open={open.C}
+          onToggle={() => toggleSection('C')}
         >
           <ChoiceQuestion
             label="Assisted by medical officer?"
@@ -292,12 +360,12 @@ export function PrepareEvacuationScreen({
           />
         </FormSection>
 
-        {/* C — Assisted by NA */}
+        {/* D — Assisted by NA */}
         <FormSection
-          letter="C"
+          letter="D"
           title="Assisted by Nursing Assistant (NA)"
-          open={open.C}
-          onToggle={() => toggleSection('C')}
+          open={open.D}
+          onToggle={() => toggleSection('D')}
         >
           <ChoiceQuestion
             label="Assisted by nursing assistant?"
@@ -308,12 +376,14 @@ export function PrepareEvacuationScreen({
           />
         </FormSection>
 
-        {/* D — Patient condition during evacuation */}
+        {/* E — Patient condition during evacuation */}
         <FormSection
-          letter="D"
-          title="Patient Condition During Evacuation"
-          open={open.D}
-          onToggle={() => toggleSection('D')}
+          letter="E"
+          title={
+            atRap ? 'Patient Condition' : 'Patient Condition During Evacuation'
+          }
+          open={open.E}
+          onToggle={() => toggleSection('E')}
         >
           <Text style={styles.hint}>
             {latestTriage
@@ -346,51 +416,59 @@ export function PrepareEvacuationScreen({
           />
         </FormSection>
 
-        {/* E — Mode of evacuation */}
-        <FormSection
-          letter="E"
-          title="Mode of Evacuation"
-          open={open.E}
-          onToggle={() => toggleSection('E')}
-        >
-          <Text style={styles.hint}>Select one.</Text>
-          <View
-            accessibilityRole="radiogroup"
-            accessibilityLabel="Mode of evacuation"
+        {/* F — Mode of evacuation (not asked when continuing at the RAP) */}
+        {atRap ? null : (
+          <FormSection
+            letter="F"
+            title="Mode of Evacuation"
+            open={open.F}
+            onToggle={() => toggleSection('F')}
           >
-            {MODES.map(m => {
-              const selected = form.mode === m.value;
-              return (
-                <Pressable
-                  key={m.value}
-                  onPress={() => set('mode', m.value)}
-                  accessibilityRole="radio"
-                  accessibilityLabel={`${m.label} (${m.meaning})`}
-                  accessibilityState={{ selected, checked: selected }}
-                  style={({ pressed }) => [
-                    styles.mode,
-                    selected && styles.modeOn,
-                    pressed && !selected && styles.pressed,
-                  ]}
-                >
-                  <View style={[styles.box, selected && styles.boxOn]}>
-                    {selected ? (
-                      <Icon name="check" size={18} color={colors.onPrimary} />
-                    ) : null}
-                  </View>
-                  <Text style={styles.modeLabel}>{m.label}</Text>
-                  <Text style={styles.modeMeaning}>({m.meaning})</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-          {errors.mode ? <Text style={styles.error}>{errors.mode}</Text> : null}
-        </FormSection>
+            <Text style={styles.hint}>Select one.</Text>
+            <View
+              accessibilityRole="radiogroup"
+              accessibilityLabel="Mode of evacuation"
+            >
+              {MODES.map(m => {
+                const selected = form.mode === m.value;
+                return (
+                  <Pressable
+                    key={m.value}
+                    onPress={() => set('mode', m.value)}
+                    accessibilityRole="radio"
+                    accessibilityLabel={`${m.label} (${m.meaning})`}
+                    accessibilityState={{ selected, checked: selected }}
+                    style={({ pressed }) => [
+                      styles.mode,
+                      selected && styles.modeOn,
+                      pressed && !selected && styles.pressed,
+                    ]}
+                  >
+                    <View style={[styles.box, selected && styles.boxOn]}>
+                      {selected ? (
+                        <Icon name="check" size={18} color={colors.onPrimary} />
+                      ) : null}
+                    </View>
+                    <Text style={styles.modeLabel}>{m.label}</Text>
+                    <Text style={styles.modeMeaning}>({m.meaning})</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            {errors.mode ? (
+              <Text style={styles.error}>{errors.mode}</Text>
+            ) : null}
+          </FormSection>
+        )}
 
         <Notice
           tone="warning"
           title="Final step"
-          message="Saving completes the evacuation record. The casualty shows as Handed over and the record becomes read only."
+          message={
+            atRap
+              ? 'Saving completes this record with the decision to continue treatment at the RAP. The record becomes read only.'
+              : 'Saving completes the evacuation record. The casualty shows as Handed over and the record becomes read only.'
+          }
         />
         {errorCount ? (
           <Notice
@@ -486,6 +564,17 @@ const styles = StyleSheet.create({
   },
   boxOn: { borderColor: colors.primary, backgroundColor: colors.primary },
   modeLabel: { fontSize: 18, fontWeight: '700', color: colors.textPrimary },
+  selected: {
+    marginTop: spacing.xs,
+    padding: spacing.md,
+    gap: 2,
+    borderRadius: radius.md,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.primary,
+    backgroundColor: colors.primarySurface,
+  },
+  selectedLabel: { ...typography.caption, color: colors.textSecondary },
+  selectedValue: { fontSize: 18, fontWeight: '700', color: colors.primary },
   modeMeaning: { ...typography.body, color: colors.textSecondary },
 
   actions: { gap: spacing.md },

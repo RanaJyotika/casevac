@@ -1,3 +1,5 @@
+import type { LoginStation } from './station';
+
 /**
  * Medic profile returned by the dashboard at online sign-in
  * (admin-dashboard/src/lib/services/mobile-access-service.ts → MobileProfile)
@@ -20,6 +22,11 @@ export interface MobileProfile {
   permissions: string[];
   teams: { teamCode: string; name: string; leader: boolean }[];
   issuedAt: string;
+  /**
+   * Station the credentials are issued for. Null/absent = either station
+   * (accounts issued before stations, or cached by an older app version).
+   */
+  station?: LoginStation | null;
 }
 
 /** One medic's sign-in saved on this tablet. Never holds the plain password. */
@@ -38,5 +45,6 @@ export interface CachedAccount {
 export type ServerSignInError =
   | 'INVALID_CREDENTIALS'
   | 'ACCOUNT_DISABLED'
+  | 'WRONG_STATION'
   | 'RATE_LIMITED'
   | 'BAD_REQUEST';

@@ -9,8 +9,9 @@ import App from '../App';
 
 // SafeAreaProvider renders nothing until it measures the screen; use the
 // library's own Jest mock so the screens render in tests.
-jest.mock('react-native-safe-area-context', () =>
-  require('react-native-safe-area-context/jest/mock').default,
+jest.mock(
+  'react-native-safe-area-context',
+  () => require('react-native-safe-area-context/jest/mock').default,
 );
 
 type Renderer = ReactTestRenderer.ReactTestRenderer;
@@ -77,6 +78,30 @@ test('shows the Jeevan login screen with only the expected controls', async () =
   expect(findInput(tree, 'User ID')).toBeDefined();
   expect(findInput(tree, 'Password').props.secureTextEntry).toBe(true);
   expect(findButton(tree, 'Login')).toBeDefined();
+});
+
+test('shows the JEEVAN full name and a RAP / ADS login station choice', async () => {
+  const tree = await renderApp();
+  const text = allText(tree);
+  expect(text).toContain(
+    'Joint Electronic Evacuation and Vital Assessment Network',
+  );
+  expect(text).toContain('Login Station');
+  const station = (label: string) =>
+    tree.root.find(
+      n =>
+        n.props.accessibilityRole === 'radio' &&
+        n.props.accessibilityLabel === label &&
+        typeof n.props.onPress === 'function',
+    );
+  const rap = 'RAP, Regimental Aid Post';
+  const ads = 'ADS, Advanced Dressing Station';
+  expect(station(rap).props.accessibilityState.selected).toBe(true);
+  await ReactTestRenderer.act(async () => {
+    station(ads).props.onPress();
+  });
+  expect(station(ads).props.accessibilityState.selected).toBe(true);
+  expect(station(rap).props.accessibilityState.selected).toBe(false);
 });
 
 test('validates empty fields without signing in', async () => {
@@ -156,7 +181,10 @@ test('Emergency Record asks for confirmation, then opens the app unverified', as
   // Nothing opens until the medic confirms.
   expect(allText(tree)).toContain('Medic Login');
 
-  const buttons = alertSpy.mock.calls[0][2] as { text: string; onPress?: () => unknown }[];
+  const buttons = alertSpy.mock.calls[0][2] as {
+    text: string;
+    onPress?: () => unknown;
+  }[];
   const start = buttons.find(b => b.text === 'Start emergency record');
   await ReactTestRenderer.act(async () => {
     await start?.onPress?.();

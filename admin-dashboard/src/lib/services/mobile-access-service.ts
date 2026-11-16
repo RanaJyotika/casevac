@@ -24,11 +24,14 @@ import { buildTransferKeyFile, type TransferKeyFile } from "../crypto/transfer-k
 import { getRepository, type RepositoryWriter } from "../data";
 import { newInternalId } from "../domain/ids";
 import { ROLE_DEFINITIONS } from "../domain/roles";
-import type {
-  Actor,
-  MobileLoginAccount,
-  PersonRecord,
-  StaffRecord,
+import {
+  LOGIN_STATION_LABEL,
+  isLoginStation,
+  type Actor,
+  type LoginStation,
+  type MobileLoginAccount,
+  type PersonRecord,
+  type StaffRecord,
 } from "../domain/types";
 import { validateReason } from "../domain/validation";
 import { fail, invalid, nowIso, ok, runTransaction, type ServiceResult } from "./common";
@@ -90,11 +93,19 @@ async function liveAccountFor(tx: RepositoryWriter, personId: string) {
 }
 
 /**
- * Generates a new user ID + password. If the person already has a live
- * account it is revoked first (password reset): any tablet holding the old
- * copy drops it the next time it reaches the server.
+ * Generates a new user ID + password for a login station (RAP or ADS). If the
+ * person already has a live account it is revoked first (password reset):
+ * any tablet holding the old copy drops it the next time it reaches the
+ * server. Without a station the credentials work at either station.
  */
-export async function issueMobileLogin(personId: string, actor: Actor): Promise<ServiceResult<IssuedMobileLogin>> {
+export async function issueMobileLogin(
+  personId: string,
+  actor: Actor,
+  station: LoginStation | null = null,
+): Promise<ServiceResult<IssuedMobileLogin>> {
+  if (station !== null && !isLoginStation(station)) {
+    return invalid({ station: "Select the login station: RAP or ADS." });
+  }
   return runTransaction(actor, async (tx, audit) => {
     const person = await tx.getPerson(personId);
     if (!person) return fail("Personnel record not found.");
@@ -124,6 +135,8 @@ export async function issueMobileLogin(personId: string, actor: Actor): Promise<
       passwordSalt: salt,
       passwordVault: sealPassword(password, accountId),
       status: "PENDING_FIRST_LOGIN",
+      station,
+      lastStation: null,
       issuedAt: now,
       issuedBy: actor.id,
       firstLoginAt: null,
@@ -141,7 +154,7 @@ export async function issueMobileLogin(personId: string, actor: Actor): Promise<
       previous ? "MOBILE_LOGIN_RESET" : "MOBILE_LOGIN_ISSUED",
       "MOBILE_LOGIN",
       account.id,
-      `${previous ? "Reset" : "Issued"} mobile sign-in ${account.userId} for ${person.displayId}`,
+      `${previous ? "Reset" : "Issued"} mobile sign-in ${account.userId} for ${person.displayId} (station: ${station ?? "any"})`,
     );
     return ok({ account, password });
   });
@@ -215,9 +228,16 @@ export interface MobileProfile {
   permissions: string[];
   teams: { teamCode: string; name: string; leader: boolean }[];
   issuedAt: string;
+  /** Station the credentials are issued for; null = either station. */
+  station: LoginStation | null;
 }
 
-export type MobileSignInError = "INVALID_CREDENTIALS" | "ACCOUNT_DISABLED" | "RATE_LIMITED" | "BAD_REQUEST";
+export type MobileSignInError =
+  | "INVALID_CREDENTIALS"
+  | "ACCOUNT_DISABLED"
+  | "WRONG_STATION"
+  | "RATE_LIMITED"
+  | "BAD_REQUEST";
 
 /** What a tablet needs to verify and resolve wristband QR codes offline. */
 export interface MobileProvisioning {
@@ -251,6 +271,11 @@ export interface OfflineLoginReport {
 export interface MobileSignInInput {
   userId: string;
   password: string;
+  /**
+   * Station picked on the tablet's login screen (RAP / ADS). Older app
+   * versions do not send it; they are not checked.
+   */
+  station?: string;
   device?: string;
   /** Offline sign-ins on this tablet since its last contact with the server. */
   offlineLogins?: OfflineLoginReport[];
@@ -310,6 +335,10 @@ export async function mobileSignIn(input: MobileSignInInput): Promise<MobileSign
   if (!userId || !password || userId.length > 40 || password.length > 200) {
     return { ok: false, error: "BAD_REQUEST", message: "Enter a user ID and password." };
   }
+  const station = input.station === undefined || input.station === "" ? null : input.station;
+  if (station !== null && !isLoginStation(station)) {
+    return { ok: false, error: "BAD_REQUEST", message: "Select the login station: RAP or ADS." };
+  }
   if (isThrottled(userId)) {
     return { ok: false, error: "RATE_LIMITED", message: "Too many failed attempts. Wait a few minutes and try again." };
   }
@@ -320,6 +349,7 @@ export async function mobileSignIn(input: MobileSignInInput): Promise<MobileSign
   type Outcome =
     | { kind: "invalid" }
     | { kind: "disabled" }
+    | { kind: "wrong-station"; issued: LoginStation }
     | { kind: "signed-in"; profile: MobileProfile; firstLogin: boolean };
   const result = await runTransaction<Outcome>(systemActor, async (tx, audit) => {
     const account = await tx.findMobileAccountByUserId(userId);
@@ -331,6 +361,15 @@ export async function mobileSignIn(input: MobileSignInInput): Promise<MobileSign
     if (account.status === "REVOKED" || !person || mobileAccessProblem(person)) {
       return ok({ kind: "disabled" });
     }
+    if (station && account.station && station !== account.station) {
+      await audit(
+        "MOBILE_LOGIN_FAILED",
+        "MOBILE_LOGIN",
+        account.id,
+        `Mobile sign-in for ${userId} refused: issued for ${account.station}, tablet selected ${station}`,
+      );
+      return ok({ kind: "wrong-station", issued: account.station });
+    }
     const staff = person as StaffRecord;
     const now = nowIso();
     const firstLogin = account.status === "PENDING_FIRST_LOGIN";
@@ -341,13 +380,17 @@ export async function mobileSignIn(input: MobileSignInInput): Promise<MobileSign
       lastOnlineLoginAt: now,
       onlineLoginCount: account.onlineLoginCount + 1,
       lastDevice: cleanDevice(input.device) ?? account.lastDevice,
+      lastStation: station ?? account.lastStation ?? null,
     };
     await tx.updateMobileAccount(updated);
+    const at = station ? ` at ${station}` : "";
     await audit(
       firstLogin ? "MOBILE_LOGIN_ACTIVATED" : "MOBILE_LOGIN_ONLINE",
       "MOBILE_LOGIN",
       account.id,
-      firstLogin ? `First mobile sign-in for ${userId}; offline copy saved on tablet` : `Online mobile sign-in for ${userId}`,
+      firstLogin
+        ? `First mobile sign-in for ${userId}${at}; offline copy saved on tablet`
+        : `Online mobile sign-in for ${userId}${at}`,
     );
 
     const role = ROLE_DEFINITIONS[staff.staff.role];
@@ -372,6 +415,7 @@ export async function mobileSignIn(input: MobileSignInInput): Promise<MobileSign
         permissions: role.permissions.filter(p => p.startsWith("clinical.")),
         teams,
         issuedAt: account.issuedAt,
+        station: account.station ?? null,
       },
     });
   });
@@ -386,6 +430,13 @@ export async function mobileSignIn(input: MobileSignInInput): Promise<MobileSign
       ok: false,
       error: "ACCOUNT_DISABLED",
       message: "This sign-in has been revoked or the account is inactive. Contact your unit registrar.",
+    };
+  }
+  if (outcome.kind === "wrong-station") {
+    return {
+      ok: false,
+      error: "WRONG_STATION",
+      message: `This user ID is issued for ${LOGIN_STATION_LABEL[outcome.issued]}. Select ${outcome.issued} as the login station, or ask your unit registrar to issue a login for this station.`,
     };
   }
   const provisioning: MobileProvisioning = {

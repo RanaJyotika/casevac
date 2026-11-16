@@ -12,7 +12,7 @@ In pre-hospital evacuation, information about a casualty can be fragmented betwe
 
 ## 2. Proposed solution
 
-Build a **React Native Android tablet application — "Jeevan"**, used in landscape on ~10-inch tablets — for verified medics to document an ongoing evacuation, backed by a basic web admin dashboard for personnel enrolment and issuing unique patient QR wristbands. The app opens on a **command dashboard** (casualty summary cards, company-wise and triage-category charts, recent activity, quick actions).
+Build a **React Native Android tablet application — "Jeevan"**, used in landscape on ~10-inch tablets — for verified medics to document an ongoing evacuation, backed by a basic web admin dashboard for personnel enrolment and issuing unique patient QR wristbands. The app opens on a **command dashboard** (casualty summary cards, Coy-wise and triage-category charts, recent activity, quick actions).
 
 - **Admin** verifies/registers personnel, generates a random permanent Patient ID and issues an associated QR token.
 - **Medic Team A** authenticates, scans QR (or uses a safe unknown-casualty process), creates a new evacuation incident and records initial care offline.
@@ -31,7 +31,7 @@ Build a **React Native Android tablet application — "Jeevan"**, used in landsc
 | Offline assessment, vitals, GCS and treatment logging | Production clinical decision support/AI diagnosis |
 | Timeline and prepared handover summary | Real-time GPS tracking or tactical command systems |
 | Home command dashboard (counts and charts from records on the tablet) | Force-wide live totals before server sync exists |
-| Triage category (RED / YELLOW / GREEN / BLACK) and company per casualty | Phone-sized portrait layouts |
+| Triage category (RED / YELLOW / GREEN / BLACK) and Coy per casualty | Phone-sized portrait layouts |
 | Future-looking offline transfer interfaces | Guaranteed Bluetooth/Wi-Fi Direct/USB transfer without testing |
 | Unknown casualty and manual-ID fallback | Operational deployment with real protected patient data |
 | Future NFC/RFID-ready identity abstraction | RFID tag writing without suitable chip/readers |

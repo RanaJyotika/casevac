@@ -42,6 +42,9 @@ import {
 } from '../services/evacuation/interventions';
 import {
   MODE_LABEL,
+  PROCEDURE_ACTION,
+  PROCEDURE_LABEL,
+  staysAtRap,
   getEvacuationStore,
   type EvacuationRecord,
   type EvacuationStore,
@@ -327,30 +330,53 @@ interface Loaded {
 }
 
 function EvacuationReport({ e }: { e: EvacuationRecord }) {
+  const atRap = staysAtRap(e.procedure);
   return (
     <>
-      <Section letter="A" title="Date & Time of Evacuation">
+      <Section letter="A" title="Evacuation Procedure">
         <Row
-          label="Evacuated"
+          label="Next action"
+          value={e.procedure ? PROCEDURE_LABEL[e.procedure] : NOT_RECORDED}
+        />
+        {e.procedure ? (
+          <Row label="Selected action" value={PROCEDURE_ACTION[e.procedure]} />
+        ) : null}
+      </Section>
+      <Section
+        letter="B"
+        title={atRap ? 'Date & Time of Decision' : 'Date & Time of Evacuation'}
+      >
+        <Row
+          label={atRap ? 'Decided' : 'Evacuated'}
           value={e.evacuatedAt ? formatDateTime(e.evacuatedAt) : NOT_RECORDED}
         />
       </Section>
-      <Section letter="B" title="Assisted by Medical Officer (MO)">
+      <Section letter="C" title="Assisted by Medical Officer (MO)">
         <Row label="Assisted by MO" value={e.assistedByMo ? 'Yes' : 'No'} />
       </Section>
-      <Section letter="C" title="Assisted by Nursing Assistant (NA)">
+      <Section letter="D" title="Assisted by Nursing Assistant (NA)">
         <Row label="Assisted by NA" value={e.assistedByNa ? 'Yes' : 'No'} />
       </Section>
-      <Section letter="D" title="Patient Condition During Evacuation">
+      <Section
+        letter="E"
+        title={
+          atRap ? 'Patient Condition' : 'Patient Condition During Evacuation'
+        }
+      >
         <Row
           label={`Triage priority ${TRIAGE_PRIORITY[e.condition]}`}
           value={<TriagePill category={e.condition} />}
         />
         <Row label="Condition notes" value={e.conditionNotes || NOT_RECORDED} />
       </Section>
-      <Section letter="E" title="Mode of Evacuation">
-        <Row label="Mode" value={MODE_LABEL[e.mode]} />
-      </Section>
+      {atRap ? null : (
+        <Section letter="F" title="Mode of Evacuation">
+          <Row
+            label="Mode"
+            value={e.mode ? MODE_LABEL[e.mode] : NOT_RECORDED}
+          />
+        </Section>
+      )}
     </>
   );
 }

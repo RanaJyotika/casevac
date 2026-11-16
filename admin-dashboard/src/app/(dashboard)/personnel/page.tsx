@@ -159,8 +159,13 @@ export default async function PersonnelPage({ searchParams }: PageProps<"/person
                   <Td>
                     {person.category === "SOLDIER" ? "Soldier" : ROLE_DEFINITIONS[person.staff.role].label}
                     {person.category !== "SOLDIER" && ROLE_DEFINITIONS[person.staff.role].permissions.includes("clinical.record") ? (
-                      <div className="mt-1">
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5">
                         <MobileLoginStatusBadge status={mobileAccounts.get(person.id)?.status ?? null} />
+                        {mobileAccounts.get(person.id)?.station ? (
+                          <span className="text-xs font-semibold text-ink-2">
+                            {mobileAccounts.get(person.id)?.station}
+                          </span>
+                        ) : null}
                       </div>
                     ) : null}
                   </Td>

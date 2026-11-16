@@ -7,7 +7,7 @@
 import type { EvacuationStage, TriageCategory } from '../../types';
 import { MOI_OPTIONS } from '../evacuation/assessment';
 
-/** The six companies (client example names — confirm with client). */
+/** The six Coys (companies; client example names — confirm with client). */
 export const COMPANIES = [
   'Alpha',
   'Bravo',

@@ -2,7 +2,7 @@
  * M01 — Medic Login (CASEVAC_DOCS/SCREEN_SPECIFICATIONS.md)
  *
  * Tablet landscape split layout (UI_DESIGN_GUIDELINES.md §5):
- *   left  — Jeevan branding and short instructions
+ *   left  — Jeevan branding over a blue radar sweep
  *   right — bordered login box: User ID, Password, Login, Forgot Password,
  *           and an Emergency Record button below it
  * Falls back to a stacked layout if the window is narrow or portrait.
@@ -36,6 +36,7 @@ import {
   StatusBadge,
   UserIcon,
 } from '../components';
+import { RadarBackdrop } from '../components/RadarBackdrop';
 import {
   getDefaultAuthDeps,
   signIn,
@@ -53,16 +54,14 @@ import {
   typography,
 } from '../theme/tokens';
 import type { Clinician } from '../types';
-import { APP_NAME } from '../brand';
+import { APP_FULL_NAME, APP_NAME } from '../brand';
+import {
+  DEFAULT_STATION,
+  LOGIN_STATIONS,
+  type LoginStation,
+} from '../services/auth/station';
 
 // The app's name (Jeevan) lives in src/brand.ts.
-
-const INSTRUCTIONS = [
-  'Sign in with the user ID and password issued by your unit registrar.',
-  'Your first sign-in must be online at base camp. After that you can sign in on this tablet without a network.',
-  'Cannot sign in? Use Emergency Record to start casualty care at once.',
-  'Demonstration build: use fictional casualty data only.',
-];
 
 interface LoginScreenProps {
   onSignIn: (clinician: Clinician) => void;
@@ -91,6 +90,7 @@ export function LoginScreen({
 
   const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
+  const [station, setStation] = useState<LoginStation>(DEFAULT_STATION);
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [authError, setAuthError] = useState<string | null>(null);
@@ -142,7 +142,7 @@ export function LoginScreen({
 
     setSubmitting(true);
     try {
-      const result = await signIn(userId, password, deps);
+      const result = await signIn(userId, password, deps, station);
       if (result.ok) {
         setPassword('');
         if (result.clinician.signInMode === 'online') {
@@ -175,7 +175,7 @@ export function LoginScreen({
           style: 'destructive',
           onPress: async () => {
             setPassword('');
-            onEmergencyAccess(await startEmergencySession());
+            onEmergencyAccess(await startEmergencySession(undefined, station));
           },
         },
       ],
@@ -200,7 +200,7 @@ export function LoginScreen({
           contentContainerStyle={[styles.page, split && styles.pageSplit]}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Left: branding and instructions */}
+          {/* Left: branding over the radar */}
           <View
             style={[
               styles.brandPanel,
@@ -212,6 +212,7 @@ export function LoginScreen({
               },
             ]}
           >
+            <RadarBackdrop active={submitting} />
             <View style={styles.brandMain}>
               <View style={styles.brandTop}>
                 <View style={styles.brandRow}>
@@ -220,20 +221,11 @@ export function LoginScreen({
                     {APP_NAME.toUpperCase()}
                   </Text>
                 </View>
+                <Text style={styles.fullName}>{APP_FULL_NAME}</Text>
                 <Text style={styles.tagline}>
                   Casualty evacuation records, from point of injury to medical
                   handover.
                 </Text>
-              </View>
-
-              <View style={styles.instructions}>
-                <Text style={styles.instructionsTitle}>BEFORE YOU SIGN IN</Text>
-                {INSTRUCTIONS.map((text, index) => (
-                  <View key={text} style={styles.instructionRow}>
-                    <Text style={styles.instructionNumber}>{index + 1}</Text>
-                    <Text style={styles.instructionText}>{text}</Text>
-                  </View>
-                ))}
               </View>
             </View>
 
@@ -327,6 +319,51 @@ export function LoginScreen({
                   editable={!submitting}
                 />
 
+                <View style={styles.stationField}>
+                  <Text style={styles.stationLabel} nativeID="login-station">
+                    Login Station
+                  </Text>
+                  <View
+                    style={styles.stationRow}
+                    accessibilityRole="radiogroup"
+                    accessibilityLabel="Login station"
+                  >
+                    {LOGIN_STATIONS.map(s => {
+                      const selected = station === s.value;
+                      return (
+                        <Pressable
+                          key={s.value}
+                          onPress={() => {
+                            setStation(s.value);
+                            setAuthError(null);
+                          }}
+                          disabled={submitting}
+                          accessibilityRole="radio"
+                          accessibilityLabel={`${s.label}, ${s.meaning}`}
+                          accessibilityState={{ selected, checked: selected }}
+                          style={({ pressed }) => [
+                            styles.station,
+                            selected && styles.stationOn,
+                            pressed && !selected && styles.eyeButtonPressed,
+                          ]}
+                        >
+                          <View
+                            style={[styles.radio, selected && styles.radioOn]}
+                          >
+                            {selected ? <View style={styles.radioDot} /> : null}
+                          </View>
+                          <View style={styles.stationText}>
+                            <Text style={styles.stationCode}>{s.label}</Text>
+                            <Text style={styles.stationMeaning}>
+                              {s.meaning}
+                            </Text>
+                          </View>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+
                 {authError ? (
                   <Notice
                     tone="error"
@@ -409,7 +446,8 @@ const styles = StyleSheet.create({
   brandPanel: {
     paddingRight: PANEL_PADDING,
     gap: spacing.xl,
-    backgroundColor: colors.surface,
+    overflow: 'hidden',
+    backgroundColor: colors.primarySurface,
     borderBottomWidth: layout.borderWidth,
     borderBottomColor: colors.border,
   },
@@ -440,46 +478,19 @@ const styles = StyleSheet.create({
     letterSpacing: 3,
     color: colors.textPrimary,
   },
+  fullName: {
+    fontSize: 20,
+    lineHeight: 28,
+    fontWeight: '700',
+    color: colors.primary,
+    maxWidth: 460,
+  },
   tagline: {
     ...typography.body,
     fontSize: 18,
     lineHeight: 26,
     color: colors.textSecondary,
     maxWidth: 440,
-  },
-  instructions: {
-    padding: layout.cardPadding,
-    gap: spacing.md,
-    borderWidth: layout.borderWidth,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.background,
-  },
-  instructionsTitle: {
-    ...typography.sectionTitle,
-    color: colors.textSecondary,
-  },
-  instructionRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    alignItems: 'flex-start',
-  },
-  instructionNumber: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: layout.borderWidth,
-    borderColor: colors.borderStrong,
-    textAlign: 'center',
-    textAlignVertical: 'center',
-    ...typography.label,
-    lineHeight: 26,
-    color: colors.textPrimary,
-  },
-  instructionText: {
-    ...typography.body,
-    flex: 1,
-    color: colors.textPrimary,
   },
   meta: {
     ...typography.helper,
@@ -533,6 +544,65 @@ const styles = StyleSheet.create({
   },
   eyeButtonPressed: {
     backgroundColor: colors.surface,
+  },
+  stationField: {
+    gap: spacing.sm,
+  },
+  stationLabel: {
+    ...typography.label,
+    color: colors.textPrimary,
+  },
+  stationRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  station: {
+    flex: 1,
+    minHeight: touchTarget + 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  stationOn: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primarySurface,
+  },
+  radio: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: colors.borderStrong,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioOn: {
+    borderColor: colors.primary,
+  },
+  radioDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.primary,
+  },
+  stationText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  stationCode: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  stationMeaning: {
+    ...typography.helper,
+    color: colors.textSecondary,
   },
   forgot: {
     alignSelf: 'center',

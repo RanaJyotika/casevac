@@ -155,6 +155,7 @@ export function handoverToForm(r: HandoverRecord): HandoverForm {
 export function evacuationToForm(r: EvacuationRecord): EvacuationForm {
   const at = new Date(r.evacuatedAt);
   return {
+    procedure: r.procedure,
     date: toDateValue(at),
     time: toTimeValue(at),
     assistedByMo: r.assistedByMo ? 'YES' : 'NO',

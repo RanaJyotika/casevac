@@ -460,14 +460,17 @@ test('handover (8) → prepare evacuation (9): search the officer, save both —
   );
   expect(condition.props.accessibilityState.selected).toBe(true);
 
-  // MO, NA and mode must be answered.
+  // Procedure, MO, NA and mode must be answered.
   await press(tree, 'Save');
   text = allText(tree);
+  expect(text).toContain('Select the next action for this casualty.');
   expect(text).toContain('Answer whether a medical officer assisted.');
   expect(text).toContain('Answer whether a nursing assistant assisted.');
   expect(text).toContain('Select the mode of evacuation.');
   expect(text).toContain('Prepare Evacuation');
 
+  await press(tree, 'Evacuate to FSC (Forward Surgical Centre)');
+  expect(allText(tree)).toContain('Prepare transfer to FSC');
   await press(tree, 'Assisted by medical officer?: Yes');
   await press(tree, 'Assisted by nursing assistant?: No');
   await press(tree, 'Priority 1, RED, Critical');
@@ -503,6 +506,8 @@ test('handover (8) → prepare evacuation (9): search the officer, save both —
   expect(text).toContain('ADS — Advanced Dressing Station');
   expect(text).toContain('Meera Iyer');
   expect(text).toContain('Evacuate to Higher Medical Facility');
+  expect(text).toContain('Evacuation Procedure');
+  expect(text).toContain('Prepare transfer to FSC');
   expect(text).toContain('Patient Condition During Evacuation');
   expect(text).toContain('Bleeding controlled');
   expect(text).toContain('Helicopter (Air)');
@@ -520,7 +525,7 @@ test('handover (8) → prepare evacuation (9): search the officer, save both —
   text = allText(tree);
   expect(text).toContain('Evacuation — handed over');
   expect(text).toContain(
-    'Evacuated by Helicopter (Air) · condition RED · assisted by MO',
+    'Evacuate to FSC · Evacuated by Helicopter (Air) · condition RED · assisted by MO',
   );
   expect(text).toContain('Handed over');
   expect(text).toContain('Not yet sent to next team');

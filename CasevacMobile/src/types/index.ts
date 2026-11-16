@@ -3,6 +3,8 @@
  * Status names follow CASEVAC_DOCS/APP_FLOW.md §5 "Status definitions".
  */
 
+import type { LoginStation } from '../services/auth/station';
+
 export type ConnectivityStatus = 'offline' | 'online';
 
 export type RecordStatus =
@@ -31,6 +33,8 @@ export interface Clinician {
   unit?: string;
   /** Dashboard Person.id of the signed-in medic (not set for demo/emergency). */
   personId?: string;
+  /** Login station picked on the login screen: RAP or ADS. */
+  station?: LoginStation;
 }
 
 export type SignInMode = 'online' | 'offline' | 'demo' | 'emergency';

@@ -32,6 +32,7 @@ import {
 } from '../components';
 import {
   MODE_LABEL,
+  PROCEDURE_LABEL,
   getEvacuationStore,
   type EvacuationRecord,
   type EvacuationStore,
@@ -135,7 +136,13 @@ export function EvacuationCompletedScreen({
           <View style={styles.badges}>
             <EvacuationBadge kind="HANDED_OVER" />
             {evacuation ? <TriagePill category={evacuation.condition} /> : null}
-            {evacuation ? (
+            {evacuation?.procedure ? (
+              <StatusBadge
+                label={PROCEDURE_LABEL[evacuation.procedure]}
+                tone="neutral"
+              />
+            ) : null}
+            {evacuation?.mode ? (
               <StatusBadge label={MODE_LABEL[evacuation.mode]} tone="neutral" />
             ) : null}
           </View>

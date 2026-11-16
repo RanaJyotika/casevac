@@ -23,7 +23,7 @@
 | --- | --- | --- |
 | Login / demo unlock | MVP-P0 | Split layout: branding + instructions / login box. User ID, password, forgot-password placeholder; clear demo mode |
 | App shell | MVP-P0 | Top bar (app name, page title, offline/sync status, clinician, log out) + left module navigation |
-| Home command dashboard | MVP-P0 | Built with demo data. Quick actions (Scan Patient QR, Enter Patient ID, Temporary Evacuation); summary cards (Total, RED, YELLOW, GREEN, BLACK, Active, Pending handover, Completed); company-wise stacked bar; triage horizontal bar; recent activity; evacuation status flow |
+| Home command dashboard | MVP-P0 | Built with demo data. Quick actions (Scan Patient QR, Enter Patient ID, Temporary Evacuation); summary cards (Total, RED, YELLOW, GREEN, BLACK, Active, Pending handover, Completed); Coy-wise stacked bar; triage horizontal bar; recent activity; evacuation status flow |
 | Triage category | MVP-P0 | RED / YELLOW / GREEN / BLACK as large selectable cards; colour + text label always |
 | Consciousness decision | MVP-P1 | Yes → initial assessment; No → temporary registration |
 | Prepare evacuation | MVP-P1 | Date/time, assisting staff, condition, mode (ambulance / helicopter / stretcher) |

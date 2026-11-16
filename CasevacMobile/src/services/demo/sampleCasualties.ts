@@ -236,6 +236,7 @@ async function buildEpisode(
         handoverId: handover?.id ?? null,
         ...base,
         recordedAt: iso(v.minAgo),
+        procedure: v.procedure,
         evacuatedAt: iso(v.evacuatedMinAgo),
         assistedByMo: v.assistedByMo,
         assistedByNa: v.assistedByNa,
