@@ -116,7 +116,7 @@ async function recordEvacuation(t: ReturnType<typeof tablet>): Promise<string> {
   });
   if (!h.ok) throw new Error('handover fixture');
   const handover = await t.handovers.save(h.value, { ...meta, assessmentId: assessment.id, interventionsId: null });
-  const e = validateEvacuation({
+  const e = validateEvacuation({ procedure: 'EVACUATE_TO_ADS',
     date: '2026-11-14', time: '09:10', assistedByMo: 'YES', assistedByNa: 'NO',
     condition: 'RED', conditionNotes: 'Stable on O2', mode: 'HELICOPTER',
   });

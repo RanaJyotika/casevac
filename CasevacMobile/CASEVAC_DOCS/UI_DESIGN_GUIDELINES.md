@@ -111,12 +111,12 @@ Implemented in `src/theme/tokens.ts` (`layout`, `typography`, `colors`, `triage`
 +-----------+--------------------------------------------------------------------------+
 | Sidebar   | [Scan Patient QR] [Start New Evacuation] [Receive Handover] [Track Casualty] |  quick actions
 |           | [Total][RED][YELLOW][GREEN][BLACK][Active][Pending handover][Completed]      |  summary cards
-|           | +-- Casualties by company (stacked) --+ +-- By triage category ---------+    |
+|           | +-- Casualties by Coy (stacked) --+ +-- By triage category ---------+    |
 |           | | Alpha   ███▓▓▒▒░  14                | | RED     ██████  12            |    |  charts
 |           | | Bravo   ██▓▓▓▒░░  11   …            | | YELLOW  ██████████  20  …     |    |  (≈60 / 40)
 |           | +-------------------------------------+ +-------------------------------+    |
 |           | +-- Recent casualty activity ---------+ +-- Evacuation status ----------+    |
-|           | | ID | Name | Company | Status | Time | | Awaiting pickup · In transfer…|    |  table + summary
+|           | | ID | Name | Coy | Status | Time | | Awaiting pickup · In transfer…|    |  table + summary
 +-----------+--------------------------------------------------------------------------+
 ```
 
@@ -203,7 +203,7 @@ colours everywhere (cards, charts, badges, selectors). Final category definition
 
 | Chart | Type | Content |
 | --- | --- | --- |
-| Casualties by company | **Stacked bar** (one bar per company) | 6 companies (examples: Alpha, Bravo, Charlie, Delta, Echo, Foxtrot); segments RED / YELLOW / GREEN / BLACK; total at bar end |
+| Casualties by Coy | **Stacked bar** (one bar per Coy) | 6 Coys (examples: Alpha, Bravo, Charlie, Delta, Echo, Foxtrot); segments RED / YELLOW / GREEN / BLACK; total at bar end |
 | Casualties by category | **Horizontal bar** (preferred for exact reading) | RED, YELLOW, GREEN, BLACK with the count printed next to each bar |
 
 Rules: text legend with counts; no animation; numeric values printed on or beside bars; empty state when there

@@ -91,16 +91,16 @@ received or acknowledged (M14 status rules still apply).
   storage exists). Receive Handover and Track Casualty are reached from the side navigation.
 - **Summary cards:** Total Casualties; Critical (RED); Moderate (YELLOW); Stable (GREEN); Deceased / Expectant
   (BLACK); Active Evacuations; Pending Handover; Completed Evacuations. Triage cards show colour **and** label and count.
-- **Chart 1 — Casualties by company:** stacked bar, one bar per company (6 companies, e.g. Alpha–Foxtrot),
+- **Chart 1 — Casualties by Coy:** stacked bar, one bar per Coy (6 Coys, e.g. Alpha–Foxtrot),
   segments RED/YELLOW/GREEN/BLACK, total per bar.
 - **Chart 2 — Casualties by category:** horizontal bar with the count beside each bar (e.g. RED – 12).
-- **Recent casualty activity:** table — casualty ID, patient name, company, status, last update time; row → M12.
+- **Recent casualty activity:** table — casualty ID, patient name, Coy, status, last update time; row → M12.
 - **Evacuation status:** vertical flow Awaiting pickup → In transfer → Handed over → Completed, with counts.
   Provisional definitions: Active = not Completed; Pending handover = Awaiting pickup + In transfer. These are
   operational stages, not digital transfer states.
 - **Data scope:** figures count records **on this tablet** until server sync exists; label "On this tablet · updated HH:MM".
 - **Empty states:** no casualties yet (cards show 0, charts show an explanation, not blank axes).
-- **Depends on:** triage category and company recorded per casualty (REQUIREMENTS FR-28, FR-29); evacuation
+- **Depends on:** triage category and Coy recorded per casualty (REQUIREMENTS FR-28, FR-29); evacuation
   status definitions (client decision).
 
 ## M03 — Scan Patient QR / Manual ID

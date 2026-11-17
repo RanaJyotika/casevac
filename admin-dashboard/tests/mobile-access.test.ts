@@ -204,6 +204,37 @@ describe("tablet sign-in", () => {
     expect(current?.firstLoginAt).not.toBeNull();
   });
 
+  it("issues credentials for a login station and checks it at sign-in", async () => {
+    const person = await medic();
+    const { account, password } = unwrap(await issueMobileLogin(person.id, actor, "ADS"));
+    expect(account.station).toBe("ADS");
+
+    const wrong = await mobileSignIn({ userId: person.displayId, password, station: "RAP" });
+    expect(wrong).toMatchObject({ ok: false, error: "WRONG_STATION" });
+    expect(!wrong.ok && wrong.message).toMatch(/ADS/);
+    expect((await getMobileAccessForPerson(person.id)).current?.status).toBe("PENDING_FIRST_LOGIN");
+
+    const right = await mobileSignIn({ userId: person.displayId, password, station: "ADS" });
+    expect(right.ok && right.profile.station).toBe("ADS");
+    expect((await getMobileAccessForPerson(person.id)).current?.lastStation).toBe("ADS");
+
+    // Older app versions send no station: not checked.
+    expect((await mobileSignIn({ userId: person.displayId, password })).ok).toBe(true);
+    // Unknown station values are refused.
+    expect(await mobileSignIn({ userId: person.displayId, password, station: "FSC" })).toMatchObject({
+      ok: false,
+      error: "BAD_REQUEST",
+    });
+  });
+
+  it("accounts issued without a station sign in at either station", async () => {
+    const person = await medic();
+    const { password } = unwrap(await issueMobileLogin(person.id, actor));
+    expect((await mobileSignIn({ userId: person.displayId, password, station: "RAP" })).ok).toBe(true);
+    const ads = await mobileSignIn({ userId: person.displayId, password, station: "ADS" });
+    expect(ads.ok && ads.profile.station).toBeNull();
+  });
+
   it("rejects a wrong password", async () => {
     const person = await medic();
     unwrap(await issueMobileLogin(person.id, actor));

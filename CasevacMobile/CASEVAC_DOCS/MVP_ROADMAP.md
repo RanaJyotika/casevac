@@ -14,7 +14,7 @@ The client now requires a **tablet-first, landscape-only** app named **Jeevan** 
 | 2 | Redraw the client's 10 screens as landscape wireframes | To do |
 | 3 | Design tokens + tablet-sized inputs/buttons; landscape + portrait layouts (lock removed 13 Nov 2026) | Done (login and Home verified in both orientations) |
 | 4 | Login screen — split layout | Done |
-| 5 | App shell (TopBar, SideNav) + Home dashboard (cards, charts, activity, quick actions, manual ID entry) | Done with fictional demo data; real figures need evacuation storage with triage + company |
+| 5 | App shell (TopBar, SideNav) + Home dashboard (cards, charts, activity, quick actions, manual ID entry) | Done with fictional demo data; real figures need evacuation storage with triage + Coy |
 | 6 | Restyle Scan QR and Patient Details into split layouts | After Home |
 | 7 | Clinical screens 4–10 in two-column / card layouts | With Phase 3 clinical records |
 

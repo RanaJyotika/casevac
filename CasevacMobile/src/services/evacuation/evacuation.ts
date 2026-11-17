@@ -2,7 +2,10 @@
  * Prepare Evacuation (client screen 9) — form model, validation, storage.
  *
  * The final step of an evacuation record. Opens after Handover Details (8).
- * Records when the casualty was evacuated, whether a medical officer (MO) and
+ * Starts with the Evacuation Procedure — the next action for the casualty:
+ * Continue at RAP · Evacuate to ADS · Evacuate to FSC · Evacuate to
+ * MH / CH / BH. Then records when the casualty was evacuated (or, when
+ * continuing at the RAP, when that was decided), whether a medical officer (MO) and
  * nursing assistant (NA) assisted, the patient's condition during evacuation
  * (triage colour, pre-filled from the latest triage) and the mode of
  * evacuation. Saving completes the record: it is then handed over and read
@@ -35,8 +38,53 @@ export const MODE_LABEL = Object.fromEntries(
   MODES.map(m => [m.value, `${m.label} (${m.meaning})`]),
 ) as Record<EvacuationMode, string>;
 
+/**
+ * Evacuation procedure: the next action for the casualty, chosen once the
+ * doctor's assessment is complete. `action` is the "Selected action" line.
+ */
+export const PROCEDURES = [
+  {
+    value: 'CONTINUE_AT_RAP',
+    label: 'Continue at RAP',
+    meaning: 'Regimental Aid Post',
+    action: 'Continue treatment at RAP',
+  },
+  {
+    value: 'EVACUATE_TO_ADS',
+    label: 'Evacuate to ADS',
+    meaning: 'Advanced Dressing Station',
+    action: 'Prepare transfer to ADS',
+  },
+  {
+    value: 'EVACUATE_TO_FSC',
+    label: 'Evacuate to FSC',
+    meaning: 'Forward Surgical Centre',
+    action: 'Prepare transfer to FSC',
+  },
+  {
+    value: 'EVACUATE_TO_MH',
+    label: 'Evacuate to MH / CH / BH',
+    meaning: 'Military / Command / Base Hospital',
+    action: 'Prepare transfer to MH / CH / BH',
+  },
+] as const;
+export type EvacuationProcedure = (typeof PROCEDURES)[number]['value'];
+
+export const PROCEDURE_LABEL = Object.fromEntries(
+  PROCEDURES.map(p => [p.value, p.label]),
+) as Record<EvacuationProcedure, string>;
+export const PROCEDURE_ACTION = Object.fromEntries(
+  PROCEDURES.map(p => [p.value, p.action]),
+) as Record<EvacuationProcedure, string>;
+
+/** The casualty stays at the RAP: no mode of evacuation is asked. */
+export const staysAtRap = (p: EvacuationProcedure | null): boolean =>
+  p === 'CONTINUE_AT_RAP';
+
 /** What the screen edits. */
 export interface EvacuationForm {
+  /** Next action for the casualty (Evacuation Procedure). */
+  procedure: EvacuationProcedure | null;
   /** YYYY-MM-DD */
   date: string | null;
   /** HH:mm */
@@ -57,13 +105,19 @@ export interface EvacuationRecord {
   patientLabel: string;
   recordedAt: string;
   recordedBy: string;
+  /**
+   * Next action chosen for the casualty. Null only on records saved before
+   * the evacuation procedure was asked.
+   */
+  procedure: EvacuationProcedure | null;
   /** ISO-8601 from the date + time of evacuation. */
   evacuatedAt: string;
   assistedByMo: boolean;
   assistedByNa: boolean;
   condition: TriageCategory;
   conditionNotes: string;
-  mode: EvacuationMode;
+  /** Null when the casualty continues at the RAP (not evacuated). */
+  mode: EvacuationMode | null;
 }
 
 /* ------------------------------ Validation ------------------------------ */
@@ -75,6 +129,7 @@ export type EvacuationValidation =
       ok: true;
       value: Pick<
         EvacuationRecord,
+        | 'procedure'
         | 'evacuatedAt'
         | 'assistedByMo'
         | 'assistedByNa'
@@ -90,15 +145,20 @@ export function validateEvacuation(
   now: Date = new Date(),
 ): EvacuationValidation {
   const errors: EvacuationErrors = {};
+  if (!form.procedure) {
+    errors.procedure = 'Select the next action for this casualty.';
+  }
+  const atRap = staysAtRap(form.procedure);
+  const what = atRap ? 'decision' : 'evacuation';
   if (!form.date) {
-    errors.date = 'Select the date of evacuation.';
+    errors.date = `Select the date of ${what}.`;
   }
   if (!form.time) {
-    errors.time = 'Select the time of evacuation.';
+    errors.time = `Select the time of ${what}.`;
   }
   const at = combine(form.date, form.time);
   if (at && at.getTime() > now.getTime() + 60_000) {
-    errors.time = 'Date and time of evacuation cannot be in the future.';
+    errors.time = `Date and time of ${what} cannot be in the future.`;
   }
   if (!form.assistedByMo) {
     errors.assistedByMo = 'Answer whether a medical officer assisted.';
@@ -109,28 +169,30 @@ export function validateEvacuation(
   if (!form.condition) {
     errors.condition = 'Select the patient’s condition during evacuation.';
   }
-  if (!form.mode) {
+  if (!form.mode && !atRap) {
     errors.mode = 'Select the mode of evacuation.';
   }
   if (
     Object.keys(errors).length ||
+    !form.procedure ||
     !at ||
     !form.assistedByMo ||
     !form.assistedByNa ||
     !form.condition ||
-    !form.mode
+    (!form.mode && !atRap)
   ) {
     return { ok: false, errors };
   }
   return {
     ok: true,
     value: {
+      procedure: form.procedure,
       evacuatedAt: at.toISOString(),
       assistedByMo: form.assistedByMo === 'YES',
       assistedByNa: form.assistedByNa === 'YES',
       condition: form.condition,
       conditionNotes: form.conditionNotes.trim(),
-      mode: form.mode,
+      mode: atRap ? null : form.mode,
     },
   };
 }
@@ -141,7 +203,8 @@ export function summariseEvacuation(r: EvacuationRecord): string {
     Boolean,
   );
   return [
-    `Evacuated by ${MODE_LABEL[r.mode]}`,
+    r.procedure ? PROCEDURE_LABEL[r.procedure] : '',
+    r.mode ? `Evacuated by ${MODE_LABEL[r.mode]}` : '',
     `condition ${r.condition}`,
     assisted.length ? `assisted by ${assisted.join(' + ')}` : '',
   ]
@@ -157,6 +220,7 @@ const STORAGE_KEY = 'casevac.evacuations.v1';
 export const HANDED_OVER_TITLE = 'Evacuation — handed over';
 
 const MODE_VALUES = new Set<string>(MODES.map(m => m.value));
+const PROCEDURE_VALUES = new Set<string>(PROCEDURES.map(p => p.value));
 const TRIAGE = new Set<string>(['RED', 'YELLOW', 'GREEN', 'BLACK']);
 const str = (v: unknown): string => (typeof v === 'string' ? v : '');
 
@@ -166,10 +230,17 @@ export function normaliseEvacuation(raw: unknown): EvacuationRecord | null {
     return null;
   }
   const r = raw as Record<string, any>;
+  const procedure: EvacuationProcedure | null = PROCEDURE_VALUES.has(
+    r.procedure,
+  )
+    ? r.procedure
+    : null;
+  const mode: EvacuationMode | null = MODE_VALUES.has(r.mode) ? r.mode : null;
   if (
     typeof r.id !== 'string' ||
     typeof r.assessmentId !== 'string' ||
-    !MODE_VALUES.has(r.mode) ||
+    // Only a casualty continuing at the RAP has no mode of evacuation.
+    (!mode && !staysAtRap(procedure)) ||
     !TRIAGE.has(r.condition)
   ) {
     return null;
@@ -184,12 +255,13 @@ export function normaliseEvacuation(raw: unknown): EvacuationRecord | null {
     patientLabel: str(r.patientLabel),
     recordedAt: str(r.recordedAt),
     recordedBy: str(r.recordedBy),
+    procedure,
     evacuatedAt: str(r.evacuatedAt),
     assistedByMo: r.assistedByMo === true,
     assistedByNa: r.assistedByNa === true,
     condition: r.condition as TriageCategory,
     conditionNotes: str(r.conditionNotes),
-    mode: r.mode as EvacuationMode,
+    mode: staysAtRap(procedure) ? null : mode,
   };
 }
 

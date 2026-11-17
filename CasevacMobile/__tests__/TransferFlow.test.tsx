@@ -129,7 +129,7 @@ async function recordOn(
     recordedBy,
   };
   const a = validateAssessment({ ...EMPTY_ASSESSMENT, conscious: 'YES', status: 'RED', hr: '120' });
-  const e = validateEvacuation({
+  const e = validateEvacuation({ procedure: 'EVACUATE_TO_FSC',
     date: '2026-11-14', time: '09:10', assistedByMo: 'YES', assistedByNa: 'YES',
     condition: 'RED', conditionNotes: '', mode: 'AMBULANCE',
   });

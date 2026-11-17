@@ -90,11 +90,12 @@ export function AppShell({
   const name = [clinician.rank, clinician.displayName]
     .filter(Boolean)
     .join(' ');
+  const station = clinician.station ? ` · ${clinician.station}` : '';
   const role = emergency
-    ? 'EMERGENCY ACCESS · unverified'
-    : `${clinician.roleLabel ?? 'Medic'}${clinician.isDemo ? ' · Demo' : ''}${
-        clinician.signInMode === 'offline' ? ' · Offline sign-in' : ''
-      }`;
+    ? `EMERGENCY ACCESS · unverified${station}`
+    : `${clinician.roleLabel ?? 'Medic'}${station}${
+        clinician.isDemo ? ' · Demo' : ''
+      }${clinician.signInMode === 'offline' ? ' · Offline sign-in' : ''}`;
 
   const connectivity = status.online ? 'Online' : 'Offline';
   const queued = compact

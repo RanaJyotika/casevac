@@ -42,14 +42,14 @@
 | --- | --- | --- | --- |
 | FR-22 | App runs on Android tablets in landscape (primary, baseline 1280 × 800 dp) and portrait (800 × 1280 dp) with left navigation + content layout | P0 | Revised 13 Nov 2026: portrait added; login and Home verified in both |
 | FR-23 | Home shows summary cards: Total, RED, YELLOW, GREEN, BLACK, Active Evacuations, Pending Handover, Completed Evacuations | P0 | Baseline; counts match stored records |
-| FR-24 | Home shows casualties by company as a stacked bar chart (6 companies; segments by triage category) | P0 | Baseline; company list to be confirmed |
+| FR-24 | Home shows casualties by Coy as a stacked bar chart (6 Coys; segments by triage category) | P0 | Baseline; Coy list to be confirmed |
 | FR-25 | Home shows casualties by triage category (horizontal bar or donut) with counts | P0 | Baseline; horizontal bar preferred |
-| FR-26 | Home shows recent casualty activity (ID, name, company, status, last update) | P1 | Baseline |
+| FR-26 | Home shows recent casualty activity (ID, name, Coy, status, last update) | P1 | Baseline |
 | FR-27 | Home shows evacuation status flow (awaiting pickup → in transfer → handed over → completed) and quick actions: Scan Patient QR, Enter Patient ID, Temporary Evacuation (Receive Handover / Track Casualty via navigation) | P0 | Built with demo data; status definitions need client approval |
 | FR-27a | Manual Patient ID entry: exact match against the tablet's identity directory; result marked as manual and wristband not verified; unknown ID never opens a profile | P0 | Built; tested |
 | FR-27b | Temporary (anonymous) evacuation for a casualty without an ID or with a destroyed wristband | P0 | Entry point built; record creation needs evacuation storage (next phase) |
 | FR-28 | Each casualty/evacuation records a triage category RED / YELLOW / GREEN / BLACK as an attributed, time-stamped event (re-triage keeps history) | P0 | Required for FR-23–25; definitions need clinical approval |
-| FR-29 | Each casualty has a company attribute | P0 | Required for FR-24; source (registration vs. entered at incident) is a client decision |
+| FR-29 | Each casualty has a Coy attribute | P0 | Required for FR-24; source (registration vs. entered at incident) is a client decision |
 | FR-30 | Consciousness decision step routes to initial assessment (Yes) or temporary registration (No) | P1 | From client 10-screen workflow |
 | FR-31 | Prepare Evacuation records date/time, assisting staff, condition during evacuation and mode (ambulance / helicopter / stretcher) | P1 | From client 10-screen workflow |
 | FR-32 | Evacuation Completed screen summarises casualty, triage, interventions and timeline, with next actions | P1 | Must not imply digital transfer receipt |
@@ -127,7 +127,7 @@ The supplied image depicts nine operational request lines: (1) pickup grid/GPS/m
 - First allowed transfer mode (Bluetooth vs Wi-Fi Direct vs USB) and security constraints.
 - Whether cloud/backend may contain sensitive data, hosting policy, data retention and audit requirements.
 - Which features constitute the client's *approved* MVP vs demonstration-only mockups.
-- The six company identifiers (examples used: Alpha–Foxtrot) and whether company comes from registration or is entered per casualty.
+- The six Coy identifiers (examples used: Alpha–Foxtrot) and whether Coy comes from registration or is entered per casualty.
 - Definitions of evacuation statuses for the dashboard (awaiting pickup, in transfer, handed over, completed) and how they relate to digital transfer states.
 - Whether dashboard figures should ever show force-wide totals (needs sync) or only the tablet's own records.
 - Target tablet models and Android versions. (Orientation: both supported since 13 Nov 2026; confirm with the client.)

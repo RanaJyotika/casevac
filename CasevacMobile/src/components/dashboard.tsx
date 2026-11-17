@@ -1,6 +1,6 @@
 /**
  * Home charts (UI_DESIGN_GUIDELINES.md §9–10): triage donut (react-native-svg)
- * and casualties by company (plain Views). No animation; every value printed
+ * and casualties by Coy (plain Views). No animation; every value printed
  * as a number; triage colour always paired with its word.
  */
 import React from 'react';
@@ -125,7 +125,7 @@ export function TriageDonut({
 }
 
 /**
- * Casualties by company: one row per company, stacked triage segments with
+ * Casualties by Coy (company): one row per Coy, stacked triage segments with
  * each count printed inside, total on the right. Bars share one scale.
  */
 export function CompanyBars({ data }: { data: CompanyBreakdown[] }) {
@@ -133,7 +133,7 @@ export function CompanyBars({ data }: { data: CompanyBreakdown[] }) {
   return (
     <View style={styles.bars}>
       <View style={styles.barsHead}>
-        <Text style={styles.legendTitle}>Casualties by Company</Text>
+        <Text style={styles.legendTitle}>Casualties by Coy</Text>
         <View style={styles.barsLegend}>
           {TRIAGE_ORDER.map(c => (
             <View key={c} style={styles.barsLegendItem}>
@@ -153,7 +153,7 @@ export function CompanyBars({ data }: { data: CompanyBreakdown[] }) {
           key={d.company}
           style={styles.barRow}
           accessible
-          accessibilityLabel={`${d.company} company: ${
+          accessibilityLabel={`${d.company} Coy: ${
             d.total
           } casualties. ${TRIAGE_ORDER.map(
             c => `${triage[c].label} ${d.counts[c]}`,

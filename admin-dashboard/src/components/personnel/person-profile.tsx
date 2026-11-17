@@ -15,7 +15,7 @@ import { Badge, CredentialStatusBadge, MobileLoginStatusBadge, RecordStatusBadge
 import { buttonClasses } from "@/components/ui/button";
 import { Alert, DefinitionGrid, EmptyState, Panel, Table, Td, Th } from "@/components/ui/layout";
 import { PERMISSIONS, ROLE_DEFINITIONS } from "@/lib/domain/roles";
-import type { IdentityCredential, PersonRecord, SoldierRecord, StaffRecord } from "@/lib/domain/types";
+import { LOGIN_STATION_LABEL, type IdentityCredential, type PersonRecord, type SoldierRecord, type StaffRecord } from "@/lib/domain/types";
 import { BLOOD_GROUP_OPTIONS, RH_OPTIONS, SEX_OPTIONS } from "@/lib/domain/validation";
 import { formatDate, formatDateTime } from "@/lib/format";
 import {
@@ -378,6 +378,14 @@ function MobileLoginPanel({
           <DefinitionGrid
             items={[
               { label: "User ID", value: current.userId, mono: true },
+              {
+                label: "Login station",
+                value: current.station ? LOGIN_STATION_LABEL[current.station] : "RAP or ADS (issued before stations)",
+              },
+              {
+                label: "Last station signed in at",
+                value: current.lastStation ? LOGIN_STATION_LABEL[current.lastStation] : "",
+              },
               { label: "Password", value: <PasswordReveal personId={person.id} viewable={current.passwordViewable} />, wide: true },
               { label: "Issued", value: `${formatDateTime(current.issuedAt)} by ${current.issuedBy}` },
               { label: "First sign-in (online)", value: formatDateTime(current.firstLoginAt) },
@@ -413,6 +421,7 @@ function MobileLoginPanel({
             triggerVariant={current ? "secondary" : "primary"}
             isReset={Boolean(current)}
             personLabel={label}
+            currentStation={current?.station ?? null}
           />
           {current ? (
             <ConfirmActionButton

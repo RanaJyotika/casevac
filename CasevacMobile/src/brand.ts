@@ -13,3 +13,6 @@
 export const APP_NAME = 'Jeevan';
 /** Upper-case brand for top bars, e.g. "JEEVAN / Home". */
 export const APP_BRAND = 'JEEVAN';
+/** What JEEVAN stands for — shown prominently on the login screen. */
+export const APP_FULL_NAME =
+  'Joint Electronic Evacuation and Vital Assessment Network';

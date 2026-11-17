@@ -256,7 +256,7 @@ test('Home shows the evacuations recorded on this tablet', async () => {
       false,
     ),
   ).toBeDefined();
-  expect(text).toContain('Casualties by Company');
+  expect(text).toContain('Casualties by Coy');
 });
 
 test('My Casualties / All on Tablet switches the snapshot', async () => {

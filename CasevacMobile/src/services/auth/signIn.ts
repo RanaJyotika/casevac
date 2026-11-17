@@ -21,6 +21,11 @@ import {
 } from '../identity/provisioningStore';
 import { OfflineCredentialStore } from './offlineCredentialStore';
 import { createServerClient, type ServerClient } from './serverClient';
+import {
+  isLoginStation,
+  wrongStationMessage,
+  type LoginStation,
+} from './station';
 import type { MobileProfile } from './types';
 
 export interface AuthDeps {
@@ -52,6 +57,7 @@ export const MESSAGES = {
 export function clinicianFromProfile(
   profile: MobileProfile,
   signInMode: 'online' | 'offline',
+  station: LoginStation | null = null,
 ): Clinician {
   const team = profile.teams[0];
   return {
@@ -64,7 +70,19 @@ export function clinicianFromProfile(
     roleLabel: profile.roleLabel,
     unit: profile.unit,
     personId: profile.personId,
+    station: station ?? profile.station ?? undefined,
   };
+}
+
+/** The station the credentials belong to, when it is not the one picked. */
+function stationMismatch(
+  profile: MobileProfile,
+  station: LoginStation | null,
+): LoginStation | null {
+  const issued = profile.station;
+  return station && isLoginStation(issued) && issued !== station
+    ? issued
+    : null;
 }
 
 function demoMatch(userId: string, password: string) {
@@ -75,10 +93,16 @@ function demoMatch(userId: string, password: string) {
   );
 }
 
+/**
+ * @param station Login station picked on the login screen (RAP / ADS). It
+ *   must match the station the credentials were issued for on the dashboard;
+ *   null skips the check.
+ */
 export async function signIn(
   userIdRaw: string,
   password: string,
   deps: AuthDeps = getDefaultAuthDeps(),
+  station: LoginStation | null = null,
 ): Promise<SignInResult> {
   const userId = userIdRaw.trim().toUpperCase();
 
@@ -87,7 +111,12 @@ export async function signIn(
 
   if (demo) {
     await provisioning.loadSaved();
-    const clinician: Clinician = { ...demo.clinician, signInMode: 'demo' };
+    // Demo accounts work at either station.
+    const clinician: Clinician = {
+      ...demo.clinician,
+      signInMode: 'demo',
+      ...(station ? { station } : {}),
+    };
     if (demo.loadsSampleCasualties) {
       try {
         await loadSampleCasualties(clinician.id);
@@ -103,7 +132,7 @@ export async function signIn(
     ? [{ accountId: cached.profile.accountId, ...cached.pendingOfflineLogins }]
     : [];
 
-  const online = await deps.server.signIn(userId, password, reports);
+  const online = await deps.server.signIn(userId, password, reports, station);
 
   if (online.kind === 'ok') {
     await deps.store.saveFromOnlineSignIn(online.profile, password);
@@ -111,9 +140,14 @@ export async function signIn(
       // Server sent nothing usable: keep scanning with the last download.
       await provisioning.loadSaved();
     }
+    // A server that predates stations does not check them: check here.
+    const issued = stationMismatch(online.profile, station);
+    if (issued) {
+      return { ok: false, message: wrongStationMessage(issued) };
+    }
     return {
       ok: true,
-      clinician: clinicianFromProfile(online.profile, 'online'),
+      clinician: clinicianFromProfile(online.profile, 'online', station),
       firstLogin: online.firstLogin,
     };
   }
@@ -138,11 +172,15 @@ export async function signIn(
   if (!(await deps.store.passwordMatches(cached, password))) {
     return { ok: false, message: MESSAGES.invalid };
   }
+  const issued = stationMismatch(cached.profile, station);
+  if (issued) {
+    return { ok: false, message: wrongStationMessage(issued) };
+  }
   await deps.store.recordOfflineLogin(userId);
   await provisioning.loadSaved();
   return {
     ok: true,
-    clinician: clinicianFromProfile(cached.profile, 'offline'),
+    clinician: clinicianFromProfile(cached.profile, 'offline', station),
     firstLogin: false,
   };
 }
@@ -200,6 +238,7 @@ const EMERGENCY_LOG_KEY = 'casevac.emergencyAccessLog.v1';
  */
 export async function startEmergencySession(
   storage: Pick<typeof AsyncStorage, 'getItem' | 'setItem'> = AsyncStorage,
+  station: LoginStation | null = null,
 ): Promise<Clinician> {
   const startedAt = new Date().toISOString();
   try {
@@ -217,5 +256,6 @@ export async function startEmergencySession(
     team: 'Not signed in',
     isDemo: false,
     signInMode: 'emergency',
+    ...(station ? { station } : {}),
   };
 }

@@ -19,6 +19,7 @@ import {
 import {
   getEvacuationStore,
   MODE_LABEL,
+  PROCEDURE_LABEL,
   type EvacuationRecord,
   type EvacuationStore,
 } from '../evacuation/evacuation';
@@ -161,8 +162,7 @@ export function buildJourney(parts: {
   evacuation: EvacuationRecord | null;
   transfer: SentTransfer | null;
 }): JourneyStep[] {
-  const { assessment: a, interventions: r, handover: h, evacuation: e } =
-    parts;
+  const { assessment: a, interventions: r, handover: h, evacuation: e } = parts;
   const t = parts.transfer;
 
   const steps: JourneyStep[] = [
@@ -223,7 +223,14 @@ export function buildJourney(parts: {
       done: !!e,
       at: e?.recordedAt ?? null,
       by: e?.recordedBy ?? null,
-      detail: e ? MODE_LABEL[e.mode] : null,
+      detail: e
+        ? [
+            e.procedure ? PROCEDURE_LABEL[e.procedure] : '',
+            e.mode ? MODE_LABEL[e.mode] : '',
+          ]
+            .filter(Boolean)
+            .join(' · ') || null
+        : null,
       triage: e?.condition ?? null,
     },
   ];
@@ -348,20 +355,16 @@ export async function loadCasualtyHistory(
 
   let current: CasualtyHistory['current'] = null;
   if (assessment) {
-    const [interventions, handover, evacuation, transfer] = await Promise.all(
-      [
-        (sources.interventions ?? getInterventionsStore()).findByAssessment(
-          assessment.id,
-        ),
-        (sources.handovers ?? getHandoverStore()).findByAssessment(
-          assessment.id,
-        ),
-        (sources.evacuations ?? getEvacuationStore()).findByAssessment(
-          assessment.id,
-        ),
-        (sources.transfers ?? getTransferLog()).latestFor(assessment.id),
-      ],
-    );
+    const [interventions, handover, evacuation, transfer] = await Promise.all([
+      (sources.interventions ?? getInterventionsStore()).findByAssessment(
+        assessment.id,
+      ),
+      (sources.handovers ?? getHandoverStore()).findByAssessment(assessment.id),
+      (sources.evacuations ?? getEvacuationStore()).findByAssessment(
+        assessment.id,
+      ),
+      (sources.transfers ?? getTransferLog()).latestFor(assessment.id),
+    ]);
     current = {
       assessmentId: assessment.id,
       stage: stageOf({ handover, evacuation }),

@@ -5,7 +5,7 @@
  *   left  — Scan QR Tag · ID search · Register New Casualty
  *           Continue Active Evacuations (this medic, not yet handed over)
  *           Operational Snapshot: My Casualties / All on Tablet toggle,
- *           count tiles, triage donut and casualties by company
+ *           count tiles, triage donut and casualties by Coy
  *   right — Pending Handovers & Alerts (derived from the records)
  *           My Recent Records (created by this medic; compact rows)
  * Portrait (one column): actions, alerts, active evacuations, snapshot,

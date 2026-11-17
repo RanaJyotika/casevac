@@ -517,7 +517,7 @@ export function RecentRecordRows({
   }
   const label = (r: CasualtySummary) =>
     `${r.casualtyId}, ${r.name ?? 'unidentified'}, ${
-      r.company ?? 'company not recorded'
+      r.company ?? 'Coy not recorded'
     }, ${formatDayTime(r.updatedAt, now)}, ${STATUS[r.stage].label}`;
   if (compact) {
     return (
@@ -555,7 +555,7 @@ export function RecentRecordRows({
       <View style={[styles.row, styles.headRow]}>
         <Text style={[styles.th, styles.idHead]}>Casualty ID</Text>
         <Text style={[styles.th, styles.nameCell]}>Patient</Text>
-        <Text style={[styles.th, styles.unitCell]}>Company</Text>
+        <Text style={[styles.th, styles.unitCell]}>Coy</Text>
         <Text style={[styles.th, styles.dateCell]}>Date & Time</Text>
         <Text style={[styles.th, styles.statusCell]}>Status</Text>
       </View>

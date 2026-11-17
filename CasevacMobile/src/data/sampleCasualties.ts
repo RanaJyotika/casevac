@@ -21,7 +21,10 @@ import type { BloodGroup, RhFactor, Sex } from '../services/identity/types';
 import type { MarchKey, SystemicExam } from '../services/evacuation/assessment';
 import type { YesNoNa } from '../services/evacuation/interventions';
 import type { NextAction, Place } from '../services/evacuation/handover';
-import type { EvacuationMode } from '../services/evacuation/evacuation';
+import type {
+  EvacuationMode,
+  EvacuationProcedure,
+} from '../services/evacuation/evacuation';
 
 export interface SampleEpisode {
   /** Suffix for the record IDs (ASM-DEMO-<id>, INT-DEMO-<id>, …). */
@@ -71,12 +74,18 @@ export interface SampleEpisode {
     /** Full name of a clinician in the tablet's staff list. */
     officerName: string;
     /** Used when that clinician is not on this tablet's staff list. */
-    officerFallback: { rank: string; displayId: string; unit: string; designation: string };
+    officerFallback: {
+      rank: string;
+      displayId: string;
+      unit: string;
+      designation: string;
+    };
     nextAction: NextAction;
   };
   evacuation?: {
     minAgo: number;
     evacuatedMinAgo: number;
+    procedure: EvacuationProcedure;
     assistedByMo: boolean;
     assistedByNa: boolean;
     condition: TriageCategory;
@@ -185,7 +194,8 @@ export const SAMPLE_CASUALTIES: readonly SampleCasualty[] = [
           injuryLocations: ['LLL-F', 'THL-F', 'CHR-F'],
           provisionalDiagnosis:
             'Blast injury, traumatic partial amputation left leg, haemorrhagic shock, suspected right haemothorax',
-          remarks: 'Chest seal applied right side. Tourniquet re-checked, holding.',
+          remarks:
+            'Chest seal applied right side. Tourniquet re-checked, holding.',
         },
         handover: {
           minAgo: 35,
@@ -237,7 +247,9 @@ export const SAMPLE_CASUALTIES: readonly SampleCasualty[] = [
           breathing: null,
           splinting: true,
           oxygen: 'NA',
-          medications: [{ name: 'Paracetamol', dose: '1 g PO', minAgo: 41 * DAY + 172 }],
+          medications: [
+            { name: 'Paracetamol', dose: '1 g PO', minAgo: 41 * DAY + 172 },
+          ],
           category: 'GREEN',
           injuryLocations: ['FTR-F'],
           provisionalDiagnosis: 'Sprain right ankle',
@@ -253,6 +265,7 @@ export const SAMPLE_CASUALTIES: readonly SampleCasualty[] = [
         evacuation: {
           minAgo: 41 * DAY + 110,
           evacuatedMinAgo: 41 * DAY + 112,
+          procedure: 'EVACUATE_TO_ADS',
           assistedByMo: false,
           assistedByNa: true,
           condition: 'GREEN',
@@ -271,7 +284,8 @@ export const SAMPLE_CASUALTIES: readonly SampleCasualty[] = [
           injuryCount: 2,
           status: 'RED',
           march: ['M', 'C'],
-          additionalInjury: 'Through-and-through GSW right thigh; graze left flank.',
+          additionalInjury:
+            'Through-and-through GSW right thigh; graze left flank.',
           hr: 124,
           rr: 24,
           bp: [96, 60],
@@ -298,8 +312,10 @@ export const SAMPLE_CASUALTIES: readonly SampleCasualty[] = [
           ],
           category: 'RED',
           injuryLocations: ['THR-F', 'THR-B', 'ABL-F'],
-          provisionalDiagnosis: 'GSW right thigh with suspected femoral fracture; soft-tissue wound left flank',
-          remarks: 'Distal pulses absent below tourniquet. Needs surgical evacuation.',
+          provisionalDiagnosis:
+            'GSW right thigh with suspected femoral fracture; soft-tissue wound left flank',
+          remarks:
+            'Distal pulses absent below tourniquet. Needs surgical evacuation.',
         },
       },
     ],
@@ -327,7 +343,8 @@ export const SAMPLE_CASUALTIES: readonly SampleCasualty[] = [
           injuryCount: 2,
           status: 'YELLOW',
           march: ['A', 'H'],
-          additionalInjury: 'Partial-thickness burns both forearms and front of chest (~14% TBSA).',
+          additionalInjury:
+            'Partial-thickness burns both forearms and front of chest (~14% TBSA).',
           hr: 108,
           rr: 20,
           bp: [118, 76],
@@ -353,7 +370,8 @@ export const SAMPLE_CASUALTIES: readonly SampleCasualty[] = [
           ],
           category: 'YELLOW',
           injuryLocations: ['FAR-F', 'FAL-F', 'CHR-F', 'CHL-F'],
-          provisionalDiagnosis: 'Partial-thickness burns ~14% TBSA, no inhalation injury',
+          provisionalDiagnosis:
+            'Partial-thickness burns ~14% TBSA, no inhalation injury',
           remarks: 'Burns covered with cling film; kept warm.',
         },
         handover: {
@@ -366,6 +384,7 @@ export const SAMPLE_CASUALTIES: readonly SampleCasualty[] = [
         evacuation: {
           minAgo: 180,
           evacuatedMinAgo: 182,
+          procedure: 'EVACUATE_TO_MH',
           assistedByMo: true,
           assistedByNa: true,
           condition: 'YELLOW',
@@ -399,7 +418,8 @@ export const SAMPLE_CASUALTIES: readonly SampleCasualty[] = [
           injuryCount: 2,
           status: 'YELLOW',
           march: ['C'],
-          additionalInjury: 'Deformity left forearm; seat-belt bruising across chest.',
+          additionalInjury:
+            'Deformity left forearm; seat-belt bruising across chest.',
           hr: 102,
           rr: 18,
           bp: [132, 84],
@@ -422,7 +442,8 @@ export const SAMPLE_CASUALTIES: readonly SampleCasualty[] = [
           medications: [{ name: 'Diclofenac', dose: '75 mg IM', minAgo: 285 }],
           category: 'YELLOW',
           injuryLocations: ['FAL-F', 'CHL-F'],
-          provisionalDiagnosis: 'Closed fracture left forearm; chest wall contusion',
+          provisionalDiagnosis:
+            'Closed fracture left forearm; chest wall contusion',
           remarks: 'Splinted in SAM splint, distal neurovascular intact.',
         },
         handover: {
@@ -435,6 +456,7 @@ export const SAMPLE_CASUALTIES: readonly SampleCasualty[] = [
         evacuation: {
           minAgo: 230,
           evacuatedMinAgo: 232,
+          procedure: 'EVACUATE_TO_FSC',
           assistedByMo: false,
           assistedByNa: true,
           condition: 'YELLOW',
@@ -503,7 +525,8 @@ export const SAMPLE_CASUALTIES: readonly SampleCasualty[] = [
           injuryCount: 1,
           status: 'YELLOW',
           march: ['M'],
-          additionalInjury: 'Fragment wound left shoulder, bleeding controlled.',
+          additionalInjury:
+            'Fragment wound left shoulder, bleeding controlled.',
           hr: 110,
           rr: 20,
           bp: [114, 72],
@@ -529,7 +552,8 @@ export const SAMPLE_CASUALTIES: readonly SampleCasualty[] = [
           ],
           category: 'YELLOW',
           injuryLocations: ['SHL-F', 'SHL-B'],
-          provisionalDiagnosis: 'Penetrating fragment wound left shoulder, retained fragment',
+          provisionalDiagnosis:
+            'Penetrating fragment wound left shoulder, retained fragment',
           remarks: 'Arm in sling.',
         },
         handover: {
@@ -542,6 +566,7 @@ export const SAMPLE_CASUALTIES: readonly SampleCasualty[] = [
         evacuation: {
           minAgo: 100,
           evacuatedMinAgo: 102,
+          procedure: 'EVACUATE_TO_ADS',
           assistedByMo: false,
           assistedByNa: true,
           condition: 'YELLOW',
@@ -575,7 +600,8 @@ export const SAMPLE_CASUALTIES: readonly SampleCasualty[] = [
           injuryCount: null,
           status: 'RED',
           march: ['A', 'R', 'H'],
-          additionalInjury: 'Trapped under collapsed wall; no wristband, no ID card.',
+          additionalInjury:
+            'Trapped under collapsed wall; no wristband, no ID card.',
           hr: 58,
           rr: 8,
           bp: [84, 50],

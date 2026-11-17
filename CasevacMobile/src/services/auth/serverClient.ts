@@ -5,6 +5,7 @@
 import { Platform } from 'react-native';
 import { SERVER_TIMEOUT_MS, SERVER_URL } from '../../config';
 import type { RawProvisioning } from '../identity/provisioningStore';
+import type { LoginStation } from './station';
 import type { MobileProfile, ServerSignInError } from './types';
 
 export type ServerSignInResult =
@@ -36,6 +37,8 @@ export interface ServerClient {
     userId: string,
     password: string,
     offlineLogins: OfflineLoginReport[],
+    /** Login station picked on the login screen (checked by the server). */
+    station?: LoginStation | null,
   ): Promise<ServerSignInResult>;
   /** Returns null when the server cannot be reached. */
   sync(
@@ -72,6 +75,7 @@ async function request(
 const KNOWN_ERRORS: ServerSignInError[] = [
   'INVALID_CREDENTIALS',
   'ACCOUNT_DISABLED',
+  'WRONG_STATION',
   'RATE_LIMITED',
   'BAD_REQUEST',
 ];
@@ -97,10 +101,16 @@ export function createServerClient(
       return !!res && res.ok;
     },
 
-    async signIn(userId, password, offlineLogins) {
+    async signIn(userId, password, offlineLogins, station) {
       const res = await request(
         '/api/mobile/auth/login',
-        json({ userId, password, device: deviceLabel(), offlineLogins }),
+        json({
+          userId,
+          password,
+          ...(station ? { station } : {}),
+          device: deviceLabel(),
+          offlineLogins,
+        }),
         baseUrl,
         timeoutMs,
       );

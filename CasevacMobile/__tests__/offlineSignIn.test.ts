@@ -190,3 +190,83 @@ test('the fictional demo account still works without a server', async () => {
   const result = await signIn('med-demo-01', '1234', deps);
   expect(result.ok && result.clinician.signInMode).toBe('demo');
 });
+
+/* ----------------------------- Login station ----------------------------- */
+
+function setupStation(issued: 'RAP' | 'ADS' | null) {
+  const storage = memoryStorage();
+  const state = { online: true, stations: [] as unknown[] };
+  const profile = { ...PROFILE, station: issued };
+  const server: ServerClient = {
+    isReachable: async () => state.online,
+    signIn: async (_userId, password, _reports, station) => {
+      if (!state.online) {
+        return { kind: 'unreachable' };
+      }
+      state.stations.push(station);
+      if (password !== PASSWORD) {
+        return {
+          kind: 'rejected',
+          error: 'INVALID_CREDENTIALS',
+          message: MESSAGES.invalid,
+        };
+      }
+      return station && issued && station !== issued
+        ? {
+            kind: 'rejected',
+            error: 'WRONG_STATION',
+            message: `This user ID is issued for ${issued}.`,
+          }
+        : { kind: 'ok', profile, firstLogin: false };
+    },
+    sync: async () => [],
+  };
+  const deps: AuthDeps = { server, store: new OfflineCredentialStore(storage) };
+  return { deps, state };
+}
+
+test('sends the login station and keeps it on the session', async () => {
+  const { deps, state } = setupStation('ADS');
+  const result = await signIn('DOC-00001', PASSWORD, deps, 'ADS');
+  expect(state.stations).toEqual(['ADS']);
+  expect(result.ok && result.clinician.station).toBe('ADS');
+});
+
+test('the server refusing the station keeps the offline copy', async () => {
+  const { deps } = setupStation('ADS');
+  await signIn('DOC-00001', PASSWORD, deps, 'ADS');
+  const refused = await signIn('DOC-00001', PASSWORD, deps, 'RAP');
+  expect(refused).toEqual({
+    ok: false,
+    message: 'This user ID is issued for ADS.',
+  });
+  expect(await deps.store.get('DOC-00001')).not.toBeNull();
+});
+
+test('offline sign-in checks the station saved with the credentials', async () => {
+  const { deps, state } = setupStation('RAP');
+  await signIn('DOC-00001', PASSWORD, deps, 'RAP');
+  state.online = false;
+  const wrong = await signIn('DOC-00001', PASSWORD, deps, 'ADS');
+  expect(wrong.ok).toBe(false);
+  expect(!wrong.ok && wrong.message).toMatch(/issued for RAP/);
+  const right = await signIn('DOC-00001', PASSWORD, deps, 'RAP');
+  expect(right.ok && right.clinician).toMatchObject({
+    signInMode: 'offline',
+    station: 'RAP',
+  });
+});
+
+test('credentials without a station work at either station', async () => {
+  const { deps, state } = setupStation(null);
+  await signIn('DOC-00001', PASSWORD, deps, 'RAP');
+  state.online = false;
+  const ads = await signIn('DOC-00001', PASSWORD, deps, 'ADS');
+  expect(ads.ok && ads.clinician.station).toBe('ADS');
+});
+
+test('demo accounts take the selected station', async () => {
+  const { deps } = setup();
+  const result = await signIn('med-demo-01', '1234', deps, 'ADS');
+  expect(result.ok && result.clinician.station).toBe('ADS');
+});

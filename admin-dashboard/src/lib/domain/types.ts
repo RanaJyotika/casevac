@@ -141,6 +141,21 @@ export interface IdentityCredential {
  */
 export type MobileAccountStatus = "PENDING_FIRST_LOGIN" | "ACTIVATED" | "REVOKED";
 
+/**
+ * Medical post a mobile sign-in is issued for. The medic picks the station on
+ * the tablet's login screen and it must match the one issued here.
+ *   RAP — Regimental Aid Post · ADS — Advanced Dressing Station
+ */
+export const LOGIN_STATIONS = ["RAP", "ADS"] as const;
+export type LoginStation = (typeof LOGIN_STATIONS)[number];
+export const LOGIN_STATION_LABEL: Record<LoginStation, string> = {
+  RAP: "RAP — Regimental Aid Post",
+  ADS: "ADS — Advanced Dressing Station",
+};
+export function isLoginStation(value: unknown): value is LoginStation {
+  return typeof value === "string" && (LOGIN_STATIONS as readonly string[]).includes(value);
+}
+
 export interface MobileLoginAccount {
   /** Random internal UUID. Sent to the tablet so it can tell accounts apart. */
   id: string;
@@ -158,6 +173,13 @@ export interface MobileLoginAccount {
    */
   passwordVault?: string | null;
   status: MobileAccountStatus;
+  /**
+   * Station these credentials are issued for. Absent/null on accounts issued
+   * before stations existed: those may sign in at either station.
+   */
+  station?: LoginStation | null;
+  /** Station chosen on the tablet at the last online sign-in. */
+  lastStation?: LoginStation | null;
   issuedAt: string;
   issuedBy: string;
   /** First successful online sign-in (offline copy saved on a tablet). */
