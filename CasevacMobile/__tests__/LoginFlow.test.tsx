@@ -4,7 +4,7 @@
 
 import React from 'react';
 import ReactTestRenderer from 'react-test-renderer';
-import { Alert, Text } from 'react-native';
+import { Alert, Image, Text } from 'react-native';
 import App from '../App';
 
 // SafeAreaProvider renders nothing until it measures the screen; use the
@@ -130,6 +130,16 @@ test('shows Offline when the base server cannot be reached', async () => {
     await wait(10);
   });
   expect(allText(tree)).toContain('Offline');
+});
+
+test('login scene image is bundled locally so it still loads offline', async () => {
+  const tree = await renderApp();
+  const image = tree.root.findByType(Image);
+  const source = image.props.source;
+  expect(source).toBeTruthy();
+  if (typeof source === 'object' && source && 'uri' in source) {
+    expect(String(source.uri)).not.toMatch(/^https?:/);
+  }
 });
 
 test('shows and hides the password', async () => {

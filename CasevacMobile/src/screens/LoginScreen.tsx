@@ -2,10 +2,11 @@
  * M01 — Medic Login (CASEVAC_DOCS/SCREEN_SPECIFICATIONS.md)
  *
  * Tablet landscape split layout (UI_DESIGN_GUIDELINES.md §5):
- *   left  — Jeevan branding over a blue radar sweep
- *   right — bordered login box: User ID, Password, Login, Forgot Password,
- *           and an Emergency Record button below it
+ *   left  — Jeevan branding over a radar sweep and bundled mountain scene
+ *   right — floating login card: User ID, Password, station, Login,
+ *           Forgot Password, Emergency Record
  * Falls back to a stacked layout if the window is narrow or portrait.
+ * The scene image is packed into the app so it still shows offline.
  *
  * Sign-in (services/auth/signIn.ts): credentials are issued on the admin
  * dashboard. The first sign-in must be online; the tablet then saves a hashed
@@ -15,6 +16,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -26,14 +28,17 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
+import { loginMountainScene } from '../assets/login';
 import {
   BrandMark,
+  CaduceusMark,
   EyeIcon,
   FormField,
+  Icon,
   LockIcon,
   Notice,
   PrimaryButton,
-  StatusBadge,
   UserIcon,
 } from '../components';
 import { RadarBackdrop } from '../components/RadarBackdrop';
@@ -195,12 +200,26 @@ export function LoginScreen({
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView
-          style={styles.flex}
-          contentContainerStyle={[styles.page, split && styles.pageSplit]}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Left: branding over the radar */}
+      <ScrollView
+  style={styles.flex}
+  contentContainerStyle={[
+    styles.page,
+    split && styles.pageSplit,
+    {minHeight: height},
+  ]}
+  keyboardShouldPersistTaps="handled"
+>
+  {/* Full-screen background */}
+  <Image
+    source={loginMountainScene}
+    resizeMode="cover"
+    style={styles.fullScreenScene}
+    accessibilityElementsHidden
+    importantForAccessibility="no-hide-descendants"
+  />
+
+  <SceneScrim />
+          {/* Left: radar, brand, bundled mountain scene (offline-safe). */}
           <View
             style={[
               styles.brandPanel,
@@ -212,27 +231,33 @@ export function LoginScreen({
               },
             ]}
           >
-            <RadarBackdrop active={submitting} />
+            
+            <View
+  pointerEvents="none"
+  style={styles.radarContainer}>
+  <RadarBackdrop
+    active={submitting}
+    anchor="topLeft"
+  />
+</View>
             <View style={styles.brandMain}>
               <View style={styles.brandTop}>
                 <View style={styles.brandRow}>
                   <BrandMark />
+                  <View style={styles.brandDivider} />
                   <Text style={styles.brandName} accessibilityRole="header">
                     {APP_NAME.toUpperCase()}
                   </Text>
                 </View>
                 <Text style={styles.fullName}>{APP_FULL_NAME}</Text>
-                <Text style={styles.tagline}>
-                  Casualty evacuation records, from point of injury to medical
-                  handover.
-                </Text>
+                
               </View>
             </View>
 
             <Text style={[styles.meta, styles.mono]}>v0.1.0-demo</Text>
           </View>
 
-          {/* Right: login form */}
+          {/* Right: floating login card */}
           <View
             style={[
               styles.formPanel,
@@ -245,17 +270,31 @@ export function LoginScreen({
             ]}
           >
             <View style={styles.statusRow}>
-              <StatusBadge
-                label={connectivityLabel}
-                tone={connectivity === 'online' ? 'success' : 'neutral'}
-              />
+              <View
+                accessible
+                accessibilityLabel={`Status: ${connectivityLabel}`}
+                style={styles.connectivityChip}
+              >
+                <Icon
+                  name={connectivity === 'online' ? 'wifi' : 'wifiOff'}
+                  size={14}
+                  color={colors.textMuted}
+                />
+                <Text style={styles.connectivityLabel}>
+                  {connectivityLabel}
+                </Text>
+              </View>
             </View>
 
             <View style={styles.formCenter}>
               <View style={styles.formBox}>
-                <Text style={styles.formTitle} accessibilityRole="header">
-                  Medic Login
-                </Text>
+                <View style={styles.formHeader}>
+                  <CaduceusMark />
+                  <View style={styles.formHeaderDivider} />
+                  <Text style={styles.formTitle} accessibilityRole="header">
+                    Medic Login
+                  </Text>
+                </View>
 
                 <FormField
                   label="User ID"
@@ -377,6 +416,7 @@ export function LoginScreen({
                   onPress={handleSubmit}
                   loading={submitting}
                   accessibilityHint="Signs in and opens the medic dashboard"
+                  style={styles.loginButton}
                 />
 
                 <Pressable
@@ -391,9 +431,7 @@ export function LoginScreen({
                 >
                   <Text style={styles.forgotText}>Forgot Password?</Text>
                 </Pressable>
-              </View>
 
-              <View style={styles.emergencyBox}>
                 <Pressable
                   onPress={handleEmergency}
                   disabled={submitting}
@@ -405,12 +443,9 @@ export function LoginScreen({
                     pressed && styles.emergencyButtonPressed,
                   ]}
                 >
+                  <Icon name="plus" size={18} color={colors.error} />
                   <Text style={styles.emergencyText}>Emergency Record</Text>
                 </Pressable>
-                <Text style={styles.emergencyHint}>
-                  Forgot your password or cannot sign in? Start casualty care
-                  without signing in.
-                </Text>
               </View>
 
               <Text style={styles.demo}>
@@ -425,19 +460,65 @@ export function LoginScreen({
   );
 }
 
+/** Light wash so brand text stays readable over the bundled scene. */
+function SceneScrim() {
+  return (
+    <Svg
+      pointerEvents="none"
+      style={StyleSheet.absoluteFill}
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants">
+      <Defs>
+        <LinearGradient
+          id="loginSceneScrim"
+          x1="0"
+          y1="0"
+          x2="0"
+          y2="1">
+          <Stop
+            offset="0"
+            stopColor="#FFFFFF"
+            stopOpacity="0.25"
+          />
+          <Stop
+            offset="0.5"
+            stopColor="#FFFFFF"
+            stopOpacity="0.20"
+          />
+          <Stop
+            offset="1"
+            stopColor="#FFFFFF"
+            stopOpacity="0.14"
+          />
+        </LinearGradient>
+      </Defs>
+
+      <Rect
+        width="100"
+        height="100"
+        fill="url(#loginSceneScrim)"
+      />
+    </Svg>
+  );
+}
+
 const PANEL_PADDING = layout.contentPadding + spacing.sm;
 
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
   },
   flex: {
     flex: 1,
   },
   page: {
     flexGrow: 1,
+    position: 'relative',
   },
+  
   pageSplit: {
     flexDirection: 'row',
   },
@@ -445,56 +526,90 @@ const styles = StyleSheet.create({
   /* Branding panel */
   brandPanel: {
     paddingRight: PANEL_PADDING,
-    gap: spacing.xl,
     overflow: 'hidden',
-    backgroundColor: colors.primarySurface,
-    borderBottomWidth: layout.borderWidth,
-    borderBottomColor: colors.border,
+    backgroundColor: 'transparent',
+    minHeight: 280,
+    position: 'relative',
   },
+  
   brandPanelSplit: {
-    width: '42%',
-    maxWidth: 560,
-    borderBottomWidth: 0,
-    borderRightWidth: layout.borderWidth,
-    borderRightColor: colors.border,
+    width: '56%',
+    flex: 0,
+  },
+  radarContainer: {
+    position: 'absolute',
+    width: 440,
+    height: 440,
+    left: '50%',
+    top: '50%',
+    transform: [
+      {translateX: -220},
+      {translateY: -220},
+    ],
+    opacity: 0.28,
+    overflow: 'visible',
+  },
+  
+  fullScreenScene: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
   },
   brandMain: {
     flexGrow: 1,
     justifyContent: 'center',
-    gap: spacing.xxl,
+    alignItems: 'center',
+    zIndex: 2,
   },
+  
   brandTop: {
-    gap: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 14,
+    width: '100%',
   },
+  
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    justifyContent: 'center',
+    gap: 14,
   },
+  
+  brandDivider: {
+    width: 2,
+    height: 40,
+    backgroundColor: '#081F49',
+    opacity: 0.85,
+  },
+  
   brandName: {
-    fontSize: 34,
-    lineHeight: 40,
-    fontWeight: '700',
-    letterSpacing: 3,
-    color: colors.textPrimary,
+    fontSize: 46,
+    lineHeight: 54,
+    fontWeight: '900',
+    letterSpacing: 2,
+    color: '#081F49',
+    textAlign: 'center',
   },
+  
   fullName: {
     fontSize: 20,
-    lineHeight: 28,
+    lineHeight: 29,
     fontWeight: '700',
-    color: colors.primary,
+    color: '#123366',
+    textAlign: 'center',
     maxWidth: 460,
   },
-  tagline: {
-    ...typography.body,
-    fontSize: 18,
-    lineHeight: 26,
-    color: colors.textSecondary,
-    maxWidth: 440,
-  },
+
+  
   meta: {
     ...typography.helper,
     color: colors.textSecondary,
+    zIndex: 1,
   },
   mono: {
     fontFamily: fonts.mono,
@@ -502,38 +617,80 @@ const styles = StyleSheet.create({
 
   /* Form panel */
   formPanel: {
-    paddingLeft: layout.contentPadding,
-    gap: spacing.lg,
+    paddingLeft: 24,
+    paddingRight: 24,
+    gap: 12,
     alignItems: 'center',
+    backgroundColor: 'transparent',
   },
+  
   formPanelSplit: {
-    flex: 1,
+    width: '44%',
+    flex: 0,
   },
   formCenter: {
     flexGrow: 1,
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.lg,
+    gap: 10,
   },
   statusRow: {
     alignSelf: 'stretch',
     flexDirection: 'row',
     justifyContent: 'flex-end',
   },
+  connectivityChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    minHeight: 32,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  connectivityLabel: {
+    ...typography.helper,
+    fontWeight: '600',
+    color: colors.textMuted,
+  },
   formBox: {
     width: '100%',
     maxWidth: 480,
-    padding: spacing.xl,
-    gap: 20,
-    borderWidth: layout.borderWidth,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    backgroundColor: colors.background,
+  
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 22,
+    gap: 14,
+  
+    borderWidth: 1,
+    borderColor: '#E1E7F0',
+  
+    shadowColor: '#102C63',
+    shadowOffset: {width: 0, height: 8},
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    elevation: 7,
+  },
+  formHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  formHeaderDivider: {
+    width: 1.5,
+    height: 28,
+    backgroundColor: colors.border,
   },
   formTitle: {
     ...typography.title,
     color: colors.textPrimary,
+  },
+  loginButton: {
+    borderRadius: 12,
   },
   eyeButton: {
     width: touchTarget,
@@ -563,8 +720,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    borderRadius: 12,
     borderWidth: 1.5,
     borderColor: colors.border,
     backgroundColor: colors.background,
@@ -620,19 +777,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textDecorationLine: 'underline',
   },
-  emergencyBox: {
-    width: '100%',
-    maxWidth: 480,
-    gap: spacing.sm,
-  },
   emergencyButton: {
     minHeight: layout.buttonHeight,
-    borderRadius: radius.md,
-    borderWidth: 2,
+    borderRadius: 12,
+    borderWidth: 1.5,
     borderColor: colors.error,
     backgroundColor: colors.errorSurface,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: spacing.sm,
     paddingHorizontal: spacing.lg,
   },
   emergencyButtonPressed: {
@@ -642,11 +796,6 @@ const styles = StyleSheet.create({
     ...typography.button,
     color: colors.error,
     letterSpacing: 0.5,
-  },
-  emergencyHint: {
-    ...typography.helper,
-    color: colors.textSecondary,
-    textAlign: 'center',
   },
   demo: {
     ...typography.helper,

@@ -27,7 +27,10 @@ export type IconName =
   | 'calendar'
   | 'chevronDown'
   | 'lock'
-  | 'logOut';
+  | 'logOut'
+  | 'plus'
+  | 'wifi'
+  | 'wifiOff';
 
 const PATHS: Record<IconName, React.ReactNode> = {
   scan: (
@@ -125,6 +128,22 @@ const PATHS: Record<IconName, React.ReactNode> = {
   ),
   logOut: (
     <Path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
+  ),
+  plus: <Path d="M12 5v14M5 12h14" />,
+  wifi: (
+    <>
+      <Path d="M5 12.6a12 12 0 0 1 14 0" />
+      <Path d="M8.2 16.2a7 7 0 0 1 7.6 0" />
+      <Path d="M12 20h.01" />
+    </>
+  ),
+  wifiOff: (
+    <>
+      <Path d="M5 12.6a12 12 0 0 1 14 0" />
+      <Path d="M8.2 16.2a7 7 0 0 1 7.6 0" />
+      <Path d="M12 20h.01" />
+      <Path d="M3 3l18 18" />
+    </>
   ),
 };
 

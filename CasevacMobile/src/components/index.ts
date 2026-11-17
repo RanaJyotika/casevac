@@ -1,6 +1,11 @@
 export { AppHeader } from './AppHeader';
 export { AppShell, confirmLogOut, type ShellStatus } from './AppShell';
-export { CompanyBars, InjuryBars, TRIAGE_SHORT, TriageDonut } from './dashboard';
+export {
+  CompanyBars,
+  InjuryBars,
+  TRIAGE_SHORT,
+  TriageDonut,
+} from './dashboard';
 export {
   AlertCards,
   Card,
@@ -29,6 +34,7 @@ export { SectionPanel } from './SectionPanel';
 export { StatusBadge } from './StatusBadge';
 export {
   BrandMark,
+  CaduceusMark,
   Chevron,
   EyeIcon,
   GlyphIcon,

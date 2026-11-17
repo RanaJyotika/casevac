@@ -4,6 +4,7 @@
  */
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import Svg, { Circle, Path } from 'react-native-svg';
 import { colors } from '../theme/tokens';
 
 const hidden = {
@@ -19,13 +20,69 @@ export function Chevron({ color = colors.textSecondary }: { color?: string }) {
   );
 }
 
-/** Medical cross inside a square outline (brand mark). */
+/** Medical cross in a filled square (brand mark). */
 export function BrandMark() {
   return (
     <View {...hidden} style={styles.brandBox}>
       <View style={styles.crossVertical} />
       <View style={styles.crossHorizontal} />
     </View>
+  );
+}
+
+/** Caduceus used next to "Medic Login". Decorative. */
+export function CaduceusMark({
+  size = 36,
+  color = colors.primary,
+}: {
+  size?: number;
+  color?: string;
+}) {
+  return (
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 32 32"
+      fill="none"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
+      <Path
+        d="M16 3v26"
+        stroke={color}
+        strokeWidth={2.2}
+        strokeLinecap="round"
+      />
+      <Path
+        d="M16 5.5c-3.2 0-6 1.6-7.4 3.8 2.2-.7 4.7-.6 7.4.4 2.7-1 5.2-1.1 7.4-.4C22 7.1 19.2 5.5 16 5.5Z"
+        fill={color}
+      />
+      <Path
+        d="M9.2 8.6c-2.4 1.2-3.8 3.2-3.8 5.4 0 2.6 2.2 3.8 5 2.6"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+      />
+      <Path
+        d="M22.8 8.6c2.4 1.2 3.8 3.2 3.8 5.4 0 2.6-2.2 3.8-5 2.6"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+      />
+      <Path
+        d="M10.8 16.2c-3 1.5-4.2 4-2.6 6.2 1.8 2.4 5.6 1.6 8-1.4"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+      />
+      <Path
+        d="M21.2 16.2c3 1.5 4.2 4 2.6 6.2-1.8 2.4-5.6 1.6-8-1.4"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+      />
+      <Circle cx={16} cy={5} r={1.6} fill={color} />
+    </Svg>
   );
 }
 
@@ -171,27 +228,26 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
   brandBox: {
-    width: 48,
-    height: 48,
-    borderWidth: 1.5,
-    borderColor: colors.primary,
-    borderRadius: 8,
+    width: 52,
+    height: 52,
+    backgroundColor: colors.primary,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   crossVertical: {
     position: 'absolute',
     width: 8,
-    height: 24,
-    borderRadius: 1,
-    backgroundColor: colors.primary,
+    height: 26,
+    borderRadius: 2,
+    backgroundColor: colors.onPrimary,
   },
   crossHorizontal: {
     position: 'absolute',
-    width: 24,
+    width: 26,
     height: 8,
-    borderRadius: 1,
-    backgroundColor: colors.primary,
+    borderRadius: 2,
+    backgroundColor: colors.onPrimary,
   },
   qrGrid: {
     gap: 4,

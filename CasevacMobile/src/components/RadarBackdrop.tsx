@@ -52,9 +52,14 @@ function wedge(from: number, to: number, radius: number) {
 interface RadarBackdropProps {
   /** Faster sweep while sign-in is in progress. */
   active?: boolean;
+  /** Where the disc sits in the panel. Login mock places it top-left. */
+  anchor?: 'center' | 'topLeft';
 }
 
-export function RadarBackdrop({ active = false }: RadarBackdropProps) {
+export function RadarBackdrop({
+  active = false,
+  anchor = 'center',
+}: RadarBackdropProps) {
   const [box, setBox] = useState({ width: 0, height: 0 });
   const spin = useRef(new Animated.Value(0)).current;
   const pulse = useRef(new Animated.Value(0)).current;
@@ -110,13 +115,14 @@ export function RadarBackdrop({ active = false }: RadarBackdropProps) {
     outputRange: [0.35, 1],
   });
 
-  const size = Math.max(box.width, box.height) * 1.15;
+  const size =
+    Math.max(box.width, box.height) * (anchor === 'topLeft' ? 0.92 : 1.15);
   const frame = {
     position: 'absolute' as const,
     width: size,
     height: size,
-    left: (box.width - size) / 2,
-    top: (box.height - size) / 2,
+    left: anchor === 'topLeft' ? -size * 0.18 : (box.width - size) / 2,
+    top: anchor === 'topLeft' ? -size * 0.28 : (box.height - size) / 2,
   };
 
   return (
